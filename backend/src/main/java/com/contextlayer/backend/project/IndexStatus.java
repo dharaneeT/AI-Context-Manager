@@ -1,4 +1,7 @@
 package com.contextlayer.backend.project;
 
-public class IndexStatus {
+public enum IndexStatus {
+	NEVER_INDEXED,
+	READY,
+	FAILED
 }

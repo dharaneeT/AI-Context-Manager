@@ -1,0 +1,26 @@
+@host = http://localhost:8080
+
+### Health
+GET {{host}}/api/health
+
+### Register a project (use a real folder, e.g. this repo itself)
+POST {{host}}/api/projects
+Content-Type: application/json
+
+{
+  "name": "ContextLayer",
+  "rootPath": "C:/Users/Asus/Desktop/ContextLayer",
+  "description": "Indexing ourselves"
+}
+
+### List
+GET {{host}}/api/projects
+
+### Get one
+GET {{host}}/api/projects/1
+
+### Validation error demo (blank name)
+POST {{host}}/api/projects
+Content-Type: application/json
+
+{ "name": "", "rootPath": "C:/x" }
