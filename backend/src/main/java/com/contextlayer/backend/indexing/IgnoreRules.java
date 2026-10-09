@@ -1,4 +1,4 @@
-package com.contextlayer.backend.indexing.scan;
+package com.contextlayer.backend.indexing;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

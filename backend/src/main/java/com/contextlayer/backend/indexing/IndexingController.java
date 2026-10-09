@@ -1,8 +1,5 @@
 package com.contextlayer.backend.indexing;
 
-import com.contextlayer.backend.indexing.scan.ProjectScanner;
-import com.contextlayer.backend.indexing.scan.ScanResult;
-import com.contextlayer.backend.indexing.scan.ScannedFile;
 import com.contextlayer.backend.project.Project;
 import com.contextlayer.backend.project.ProjectService;
 import java.nio.file.Path;

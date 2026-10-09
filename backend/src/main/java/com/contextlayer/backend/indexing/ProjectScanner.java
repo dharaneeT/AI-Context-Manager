@@ -1,4 +1,4 @@
-package com.contextlayer.backend.indexing.scan;
+package com.contextlayer.backend.indexing;
 
 import com.contextlayer.backend.config.IndexingProperties;
 import java.io.IOException;
@@ -9,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
