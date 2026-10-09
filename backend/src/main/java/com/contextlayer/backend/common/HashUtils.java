@@ -5,6 +5,15 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
+// A hash function converts input data into a fixed-length fingerprint.
+
+// For SHA-256, the output contains 256 bits, conventionally represented by 64 hexadecimal characters.
+
+// For example, imagine two versions of a source file:
+
+// Even though the files are almost identical, their SHA-256 hashes will ordinarily be completely different.
+
+// The hash allows ContextLayer to compare content without storing or comparing a second full copy just for change detection.
 public final class HashUtils {
 
     private HashUtils() {

@@ -1,5 +1,6 @@
 package com.contextlayer.backend.common;
 
+import com.contextlayer.backend.git.GitException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -42,5 +43,10 @@ public class GlobalExceptionHandler {
         ApiError body = new ApiError(status.value(), status.getReasonPhrase(), message,
                 request.getRequestURI(), Instant.now().toString(), fieldErrors);
         return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(GitException.class)
+    public ResponseEntity<ApiError> handleGit(GitException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request, null);
     }
 }

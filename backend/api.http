@@ -30,3 +30,12 @@ POST {{host}}/api/projects/1/index
 
 ### Stats
 GET {{host}}/api/projects/1/stats
+
+### Git: sync history
+POST {{host}}/api/projects/1/git/sync
+
+### Git: hot files / commits / co-change / uncommitted work
+GET {{host}}/api/projects/1/git/hot-files
+GET {{host}}/api/projects/1/git/recent-commits
+GET {{host}}/api/projects/1/git/co-changes?path=backend/pom.xml
+GET {{host}}/api/projects/1/git/working-changes

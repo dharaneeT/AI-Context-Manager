@@ -22,6 +22,10 @@ public class ProjectService {
 
 	@Transactional
 	public ProjectResponse create(CreateProjectRequest request) {
+		//These paths may point to the same location:
+
+		//Normalization removes redundant path elements, 
+		// and converting to an absolute path gives a consistent representation.
 		String normalizedRoot = resolveRoot(request.rootPath()).toString();
 
 		if (projectRepository.existsByRootPath(normalizedRoot)) {

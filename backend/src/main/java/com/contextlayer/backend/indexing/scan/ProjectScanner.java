@@ -27,18 +27,19 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ProjectScanner {
 
-	private final IndexingProperties props;
-	private final LanguageDetector languageDetector;
+	private final IndexingProperties props; //provides rules for ignoring files and directories.
+	private final LanguageDetector languageDetector; //identifies the likely programming language of each file.
 
 	public ScanResult scan(Path root) {
 		IgnoreRules rules = IgnoreRules.fromGitignore(root);
-		List<ScannedFile> files = new ArrayList<>();
-		Map<String, Integer> skipped = new TreeMap<>();
+		List<ScannedFile> files = new ArrayList<>(); //will hold metadata for accepted files.
+		Map<String, Integer> skipped = new TreeMap<>(); //counts why other files or directories were excluded.
 
 		try {
-			Files.walkFileTree(
+			Files.walkFileTree( //recursively visits the folder and its descendants.
 				root,
-				new SimpleFileVisitor<>() {
+					new SimpleFileVisitor<>() { //It also checks the .gitignore rules for the directory.
+												//  If the directory is ignored, its subtree is skipped as well
 					@Override
 					public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
 						if (dir.equals(root)) {
@@ -49,10 +50,11 @@ public class ProjectScanner {
 							skipped.merge("ignored-directory", 1, Integer::sum);
 							return FileVisitResult.SKIP_SUBTREE; // never descend into node_modules
 						}
-						if (rules.isIgnored(root.relativize(dir), true)) {
-							skipped.merge("gitignore", 1, Integer::sum);
-							return FileVisitResult.SKIP_SUBTREE;
-						}
+							if (rules.isIgnored(root.relativize(dir), true)) {
+								skipped.merge("gitignore", 1, Integer::sum);
+								return FileVisitResult.SKIP_SUBTREE;
+							}
+						
 						return FileVisitResult.CONTINUE;
 					}
 
@@ -125,9 +127,14 @@ public class ProjectScanner {
 			return "unreadable";
 		}
 		return null;
+
+		
+		//If the method returns a reason, the file is skipped and the counter is incremented:
+		//If it returns null, the file is eligible for indexing.
 	}
 
 	/** A NUL byte in the first 8 KB is the classic sign of a binary file (git uses the same trick). */
+	//This function tries to identify binary content.
 	private boolean looksBinary(Path file) throws IOException {
 		try (InputStream in = Files.newInputStream(file)) {
 			for (byte b : in.readNBytes(8000)) {
