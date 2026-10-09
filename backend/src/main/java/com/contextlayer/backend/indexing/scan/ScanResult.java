@@ -1,4 +1,4 @@
-package com.contextlayer.backend.indexing;
+package com.contextlayer.backend.indexing.scan;
 
 import java.util.List;
 import java.util.Map;

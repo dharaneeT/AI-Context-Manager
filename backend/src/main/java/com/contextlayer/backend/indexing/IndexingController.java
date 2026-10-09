@@ -1,5 +1,9 @@
 package com.contextlayer.backend.indexing;
 
+import com.contextlayer.backend.indexing.scan.ProjectScanner;
+import com.contextlayer.backend.indexing.scan.ScanPreview;
+import com.contextlayer.backend.indexing.scan.ScanResult;
+import com.contextlayer.backend.indexing.scan.ScannedFile;
 import com.contextlayer.backend.project.Project;
 import com.contextlayer.backend.project.ProjectService;
 import java.nio.file.Path;
@@ -7,10 +11,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/projects/{projectId}")
@@ -19,8 +20,8 @@ public class IndexingController {
 
 	private final ProjectService projectService;
 	private final ProjectScanner scanner;
+	private final IndexingService indexingService;
 
-	/** Dry run: shows what would be indexed. Writes nothing. */
 	@GetMapping("/scan-preview")
 	public ScanPreview scanPreview(@PathVariable Long projectId) {
 		Project project = projectService.getEntity(projectId);
@@ -38,5 +39,15 @@ public class IndexingController {
 			result.skipped(),
 			result.files().stream().limit(50).map(ScannedFile::relativePath).toList()
 		);
+	}
+
+	@PostMapping("/index")
+	public IndexResult index(@PathVariable Long projectId) {
+		return indexingService.indexProject(projectId);
+	}
+
+	@GetMapping("/stats")
+	public ProjectStats stats(@PathVariable Long projectId) {
+		return indexingService.stats(projectId);
 	}
 }

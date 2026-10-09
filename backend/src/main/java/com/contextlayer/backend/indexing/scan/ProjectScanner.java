@@ -1,4 +1,4 @@
-package com.contextlayer.backend.indexing;
+package com.contextlayer.backend.indexing.scan;
 
 import com.contextlayer.backend.config.IndexingProperties;
 import java.io.IOException;
@@ -15,6 +15,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+
+import com.contextlayer.backend.indexing.IgnoreRules;
+import com.contextlayer.backend.indexing.LanguageDetector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

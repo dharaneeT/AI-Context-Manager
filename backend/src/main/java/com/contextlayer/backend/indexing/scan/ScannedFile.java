@@ -1,4 +1,4 @@
-package com.contextlayer.backend.indexing;
+package com.contextlayer.backend.indexing.scan;
 
 import java.nio.file.Path;
 import java.time.Instant;

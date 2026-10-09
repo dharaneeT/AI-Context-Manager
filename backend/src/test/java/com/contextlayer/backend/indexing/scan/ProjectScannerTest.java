@@ -9,9 +9,6 @@ import java.nio.file.Path;
 import java.util.Set;
 
 import com.contextlayer.backend.indexing.LanguageDetector;
-import com.contextlayer.backend.indexing.ProjectScanner;
-import com.contextlayer.backend.indexing.ScanResult;
-import com.contextlayer.backend.indexing.ScannedFile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

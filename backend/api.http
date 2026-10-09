@@ -24,3 +24,9 @@ POST {{host}}/api/projects
 Content-Type: application/json
 
 { "name": "", "rootPath": "C:/x" }
+
+### Index a project
+POST {{host}}/api/projects/1/index
+
+### Stats
+GET {{host}}/api/projects/1/stats
