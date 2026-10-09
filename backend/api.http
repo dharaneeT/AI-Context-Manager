@@ -39,3 +39,11 @@ GET {{host}}/api/projects/1/git/hot-files
 GET {{host}}/api/projects/1/git/recent-commits
 GET {{host}}/api/projects/1/git/co-changes?path=backend/pom.xml
 GET {{host}}/api/projects/1/git/working-changes
+
+### Day 6-9: one-click refresh and overview
+POST {{host}}/api/projects/1/refresh?force=true
+GET {{host}}/api/projects/1/overview
+
+### Day 10: keyword search
+GET {{host}}/api/projects/1/search?q=how does project creation validate the folder path
+GET {{host}}/api/projects/1/search?q=chunker overlap&limit=5
