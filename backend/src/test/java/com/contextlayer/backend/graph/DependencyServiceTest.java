@@ -56,4 +56,18 @@ class DependencyServiceTest {
 		assertThat(dependencyService.dependenciesOf(id, "a/Foo.java")).containsExactly("b/Bar.java");
 		assertThat(dependencyService.dependentsOf(id, "b/Bar.java")).containsExactly("a/Foo.java");
 	}
+
+	@Test
+	void addsReferenceEdgesForSamePackageTypes() throws Exception {
+		Files.createDirectories(dir.resolve("p"));
+		Files.writeString(dir.resolve("p/Service.java"), "package p;\npublic class Service { Repo repo; }\n");
+		Files.writeString(dir.resolve("p/Repo.java"), "package p;\npublic class Repo {}\n");
+
+		Long id = projectService.create(new CreateProjectRequest("g", dir.toString(), null)).id();
+		indexingService.indexProject(id);
+		GraphBuildResult result = dependencyService.build(id);
+
+		assertThat(result.referenceEdges()).isEqualTo(1);
+		assertThat(dependencyService.dependenciesOf(id, "p/Service.java")).containsExactly("p/Repo.java");
+	}
 }

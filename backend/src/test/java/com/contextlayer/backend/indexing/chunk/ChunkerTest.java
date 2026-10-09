@@ -63,4 +63,11 @@ class ChunkerTest {
 		String text = ("x".repeat(5000) + "\n").repeat(3);
 		assertThat(chunker(80, 5, 6000).chunk(text)).hasSize(3);
 	}
+
+	@Test
+	void prefersSymbolStartLines() {
+		String text = IntStream.rangeClosed(1, 120).mapToObj(i -> "code " + i).collect(Collectors.joining("\n"));
+		List<Chunk> chunks = chunker(50, 0, 100_000).chunk(text, java.util.Set.of(45));
+		assertThat(chunks.get(0).endLine()).isEqualTo(44); // next chunk begins exactly at line 45
+	}
 }

@@ -4,6 +4,7 @@ import com.contextlayer.backend.common.HashUtils;
 import com.contextlayer.backend.config.IndexingProperties;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,11 @@ public class Chunker {
 	private final TokenEstimator estimator;
 
 	public List<Chunk> chunk(String content) {
+		return chunk(content, Set.of());
+	}
+
+	/** @param preferredStartLines 1-based lines where a symbol begins. The best places to cut. */
+	public List<Chunk> chunk(String content, Set<Integer> preferredStartLines) {
 		List<String> lines = content.lines().toList();
 		if (lines.isEmpty()) {
 			return List.of();
@@ -36,12 +42,10 @@ public class Chunker {
 		while (start < n) {
 			int end = hardEnd(lines, start, maxLines, props.chunkMaxChars());
 
-			// Not at the end of the file yet: try to cut at a natural boundary
-			// in the last quarter of the window.
 			if (end < n) {
 				int floor = start + (maxLines * 3) / 4;
 				for (int i = end; i > floor; i--) {
-					if (isBoundary(lines, i)) {
+					if (isBoundary(lines, i, preferredStartLines)) {
 						end = i;
 						break;
 					}
@@ -52,7 +56,7 @@ public class Chunker {
 			if (end >= n) {
 				break;
 			}
-			start = Math.max(end - overlap, start + 1); // overlap, but always make progress
+			start = Math.max(end - overlap, start + 1);
 		}
 		return chunks;
 	}
@@ -73,8 +77,8 @@ public class Chunker {
 	}
 
 	/** Is it a good place to start a new chunk at line index i (i.e. cut between i-1 and i)? */
-	private boolean isBoundary(List<String> lines, int i) {
-		return lines.get(i - 1).isBlank() || DECLARATION.matcher(lines.get(i)).find();
+	private boolean isBoundary(List<String> lines, int i, Set<Integer> preferred) {
+		return preferred.contains(i + 1) || lines.get(i - 1).isBlank() || DECLARATION.matcher(lines.get(i)).find();
 	}
 
 	private Chunk build(int index, List<String> lines, int start, int end) {

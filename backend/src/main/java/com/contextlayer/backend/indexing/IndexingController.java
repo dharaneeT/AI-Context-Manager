@@ -41,13 +41,18 @@ public class IndexingController {
 		);
 	}
 
-	@PostMapping("/index")
-	public IndexResult index(@PathVariable Long projectId) {
-		return indexingService.indexProject(projectId);
-	}
+	//	@PostMapping("/index")
+	//	public IndexResult index(@PathVariable Long projectId) {
+	//		return indexingService.indexProject(projectId);
+	//	}
 
 	@GetMapping("/stats")
 	public ProjectStats stats(@PathVariable Long projectId) {
 		return indexingService.stats(projectId);
+	}
+
+	@PostMapping("/index")
+	public IndexResult index(@PathVariable Long projectId, @RequestParam(defaultValue = "false") boolean force) {
+		return indexingService.indexProject(projectId, force);
 	}
 }
