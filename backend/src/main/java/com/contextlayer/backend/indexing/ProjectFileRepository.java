@@ -20,4 +20,7 @@ public interface ProjectFileRepository extends JpaRepository<ProjectFile, Long> 
             """
 	)
 	List<LanguageStat> languageStats(@Param("projectId") Long projectId);
+
+	@Query("select f.relativePath from ProjectFile f where f.project.id = :projectId order by f.relativePath")
+	List<String> findAllPaths(@Param("projectId") Long projectId);
 }
