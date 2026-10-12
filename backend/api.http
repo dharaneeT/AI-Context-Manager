@@ -1,5 +1,20 @@
 @host = http://localhost:8080
 
+### 1. Register
+POST http://localhost:8080/api/projects
+Content-Type: application/json
+
+{ "name": "ContextLayer", "rootPath": "/workspace/ContextLayer" }
+
+### 2. Index the files
+POST http://localhost:8080/api/projects/1/index
+
+### 3. Create the vectors (this is what fills pgvector)
+POST http://localhost:8080/api/projects/1/embeddings/refresh
+
+### 4. Check how many are embedded
+GET http://localhost:8080/api/projects/1/embeddings/status
+
 ### Health
 GET {{host}}/api/health
 

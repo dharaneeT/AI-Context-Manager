@@ -1,5 +1,6 @@
 package com.contextlayer.backend.pipeline;
 
+import com.contextlayer.backend.embedding.EmbeddingService.EmbedResult;
 import com.contextlayer.backend.git.GitResponses.SyncResult;
 import com.contextlayer.backend.graph.GraphBuildResult;
 import com.contextlayer.backend.indexing.IndexResult;
@@ -10,5 +11,7 @@ public record RefreshReport(
 	SyncResult git,
 	String gitNote,
 	GraphBuildResult graph,
-	SummaryRefreshResult summaries
+	SummaryRefreshResult summaries,
+	EmbedResult embeddings,
+	String embeddingNote
 ) {}

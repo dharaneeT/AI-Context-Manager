@@ -1,0 +1,57 @@
+name: contextlayer
+
+services:
+  # ---------- Box 1: the database ----------
+  db:
+    image: pgvector/pgvector:pg17 # Postgres with pgvector already installed
+    container_name: contextlayer-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: contextlayer
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the .env file}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data # database files saved in the pgdata folder on your computer
+    ports:
+      - "5434:5432" # so IntelliJ/DBeaver can still connect at localhost:5433
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d contextlayer"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ---------- Box 2: the backend ----------
+  backend:
+    build: ./backend
+    container_name: contextlayer-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy # wait until the database is ready
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/contextlayer # "db" is the name of box 1
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CONTEXTLAYER_EMBEDDING_OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      CONTEXTLAYER_EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-hash}
+      CONTEXTLAYER_EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
+      CONTEXTLAYER_EMBEDDING_OLLAMA_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+      CONTEXTLAYER_EMBEDDING_QUERY_PREFIX: ${EMBEDDING_QUERY_PREFIX:-}
+      CONTEXTLAYER_EMBEDDING_DOCUMENT_PREFIX: ${EMBEDDING_DOCUMENT_PREFIX:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${PROJECTS_DIR:?Set PROJECTS_DIR in .env}:/workspace:ro # your code, read-only
+    ports:
+      - "8080:8080"
+
+  # ---------- Box 3: the website ----------
+  frontend:
+    build: ./frontend
+    container_name: contextlayer-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80" # open http://localhost:5173

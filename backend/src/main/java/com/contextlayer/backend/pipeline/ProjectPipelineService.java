@@ -1,6 +1,9 @@
 package com.contextlayer.backend.pipeline;
 
 import com.contextlayer.backend.common.BadRequestException;
+import com.contextlayer.backend.embedding.EmbeddingException;
+import com.contextlayer.backend.embedding.EmbeddingService;
+import com.contextlayer.backend.embedding.EmbeddingService.EmbedResult;
 import com.contextlayer.backend.git.GitException;
 import com.contextlayer.backend.git.GitIntelligenceService;
 import com.contextlayer.backend.git.GitResponses.SyncResult;
@@ -13,7 +16,6 @@ import com.contextlayer.backend.summary.SummaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-/** Runs every step that keeps a project's memory up to date, in dependency order. Each step has its own transaction. */
 @Service
 @RequiredArgsConstructor
 public class ProjectPipelineService {
@@ -22,20 +24,29 @@ public class ProjectPipelineService {
 	private final GitIntelligenceService gitService;
 	private final DependencyService dependencyService;
 	private final SummaryService summaryService;
+	private final EmbeddingService embeddingService;
 
 	public RefreshReport refreshAll(Long projectId, boolean force) {
-		IndexResult index = indexingService.indexProject(projectId, force); // files, chunks, symbols
+		IndexResult index = indexingService.indexProject(projectId, force);
 
 		SyncResult git = null;
 		String gitNote = null;
 		try {
 			git = gitService.sync(projectId);
 		} catch (BadRequestException | GitException e) {
-			gitNote = e.getMessage(); // not a git repo, or git missing: everything else still works
+			gitNote = e.getMessage();
 		}
 
-		GraphBuildResult graph = dependencyService.build(projectId); // needs symbols
-		SummaryRefreshResult summaries = summaryService.refresh(projectId, force); // needs symbols
-		return new RefreshReport(index, git, gitNote, graph, summaries);
+		GraphBuildResult graph = dependencyService.build(projectId);
+		SummaryRefreshResult summaries = summaryService.refresh(projectId, force);
+
+		EmbedResult embeddings = null;
+		String embeddingNote = null;
+		try {
+			embeddings = embeddingService.refresh(projectId);
+		} catch (EmbeddingException e) {
+			embeddingNote = e.getMessage(); // no pgvector or Ollama down: everything else still works
+		}
+		return new RefreshReport(index, git, gitNote, graph, summaries, embeddings, embeddingNote);
 	}
 }

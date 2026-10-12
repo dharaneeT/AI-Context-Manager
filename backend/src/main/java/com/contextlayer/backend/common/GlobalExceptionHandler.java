@@ -1,5 +1,6 @@
 package com.contextlayer.backend.common;
 
+import com.contextlayer.backend.embedding.EmbeddingException;
 import com.contextlayer.backend.git.GitException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -48,5 +49,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(GitException.class)
     public ResponseEntity<ApiError> handleGit(GitException ex, HttpServletRequest request) {
         return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request, null);
+    }
+    @ExceptionHandler(EmbeddingException.class)
+    public ResponseEntity<ApiError> handleEmbedding(EmbeddingException ex, HttpServletRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request, null);
     }
 }
