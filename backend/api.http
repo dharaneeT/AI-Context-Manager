@@ -68,3 +68,8 @@ GET {{host}}/api/projects/1/hybrid-search?q=how are ignored files and folders ex
 
 ### Day 13: ranking
 GET {{host}}/api/projects/1/rank?task=Fix the problem where ignored folders still get indexed
+
+### Day 14: budget
+GET {{host}}/api/projects/1/budget-preview?task=Fix the problem where ignored folders still get indexed&maxTokens=4000
+GET {{host}}/api/projects/1/budget-preview?task=Fix the problem where ignored folders still get indexed&maxTokens=12000&includeText=true
+
