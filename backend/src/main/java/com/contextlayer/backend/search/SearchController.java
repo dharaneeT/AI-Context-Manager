@@ -13,11 +13,24 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class SearchController {
 
-    private final KeywordSearchService searchService;
+	private final KeywordSearchService searchService;
+	private final HybridSearchService hybridSearch;
 
-    @GetMapping("/search")
-    public KeywordSearchResult search(@PathVariable Long projectId, @RequestParam String q,
-                                      @RequestParam(defaultValue = "10") int limit) {
-        return searchService.search(projectId, q, limit);
-    }
+	@GetMapping("/search")
+	public KeywordSearchResult search(
+		@PathVariable Long projectId,
+		@RequestParam String q,
+		@RequestParam(defaultValue = "10") int limit
+	) {
+		return searchService.search(projectId, q, limit);
+	}
+
+	@GetMapping("/hybrid-search")
+	public HybridResults.HybridResult hybridSearch(
+		@PathVariable Long projectId,
+		@RequestParam String q,
+		@RequestParam(defaultValue = "15") int limit
+	) {
+		return hybridSearch.search(projectId, q, limit);
+	}
 }

@@ -62,3 +62,6 @@ GET {{host}}/api/projects/1/overview
 ### Day 10: keyword search
 GET {{host}}/api/projects/1/search?q=how does project creation validate the folder path
 GET {{host}}/api/projects/1/search?q=chunker overlap&limit=5
+
+### Day 12: hybrid search
+GET {{host}}/api/projects/1/hybrid-search?q=how are ignored files and folders excluded when indexing
