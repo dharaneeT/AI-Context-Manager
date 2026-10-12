@@ -65,3 +65,6 @@ GET {{host}}/api/projects/1/search?q=chunker overlap&limit=5
 
 ### Day 12: hybrid search
 GET {{host}}/api/projects/1/hybrid-search?q=how are ignored files and folders excluded when indexing
+
+### Day 13: ranking
+GET {{host}}/api/projects/1/rank?task=Fix the problem where ignored folders still get indexed
