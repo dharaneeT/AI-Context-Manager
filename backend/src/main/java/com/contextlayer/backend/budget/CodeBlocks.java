@@ -5,7 +5,15 @@ public final class CodeBlocks {
 	private CodeBlocks() {}
 
 	public static String fence(String heading, String language, String code) {
-		return "#### " + heading + "\n```" + language + "\n" + code.strip() + "\n```";
+		return (
+			"#### " +
+			heading +
+			"\n```" +
+			language +
+			"\n" +
+			com.contextlayer.backend.compress.CodeMinifier.minify(code) +
+			"\n```"
+		);
 	}
 
 	/** The file extension doubles as the markdown fence language tag. */
