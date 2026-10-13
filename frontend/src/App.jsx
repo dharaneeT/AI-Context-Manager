@@ -1,44 +1,55 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import "./App.css";
+import { api } from "./api.js";
+import { useAsync } from "./useAsync";
+import ProjectSidebar from "./components/ProjectSidebar";
+import Workspace from "./components/Workspace";
 
-function App() {
-  const [health, setHealth] = useState(null);
-  const [error, setError] = useState(null);
+export default function App() {
+  const health = useAsync(() => api.health(), []);
+  const projects = useAsync(() => api.projects(), []);
+  const [selectedId, setSelectedId] = useState(null);
 
-  useEffect(() => {
-    fetch("/api/health")
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(setHealth)
-      .catch((err) => setError(err.message));
-  }, []);
+  const list = projects.data ?? [];
+  const selected = list.find((p) => p.id === selectedId) ?? list[0] ?? null;
+
+  let status = "checking…";
+  let statusClass = "pill";
+  if (health.error) {
+    status = "backend offline";
+    statusClass = "pill bad";
+  } else if (health.data) {
+    status = `${health.data.status} · db ${health.data.database ? "ok" : "down"}`;
+    statusClass = `pill ${health.data.status === "UP" ? "ok" : "warn"}`;
+  }
 
   return (
-    <main className="app">
-      <h1>ContextLayer</h1>
-      <p className="tagline">Task-specific context packs for AI agents</p>
-
-      <section className="card">
-        <h2>Backend status</h2>
-        {error && <p className="bad">Cannot reach backend: {error}</p>}
-        {!error && !health && <p>Checking…</p>}
-        {health && (
-          <ul>
-            <li>
-              Status:{" "}
-              <strong className={health.status === "UP" ? "ok" : "bad"}>
-                {health.status}
-              </strong>
-            </li>
-            <li>Database: {health.database ? "connected" : "DOWN"}</li>
-            <li>Application: {health.application}</li>
-          </ul>
-        )}
-      </section>
-    </main>
+    <div className="shell">
+      <header className="topbar">
+        <h1>ContextLayer</h1>
+        <span className="tagline">
+          task-specific context packs for AI agents
+        </span>
+        <span className={statusClass}>{status}</span>
+      </header>
+      <div className="layout">
+        <ProjectSidebar
+          projects={list}
+          error={projects.error}
+          selectedId={selected?.id ?? null}
+          onSelect={setSelectedId}
+          onChanged={projects.reload}
+        />
+        <main className="main">
+          {selected ? (
+            <Workspace key={selected.id} project={selected} />
+          ) : (
+            <p className="muted">
+              Add a project folder on the left to get started.
+            </p>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }
-
-export default App;
