@@ -85,3 +85,13 @@ Content-Type: application/json
 
 ### Day 16: markdown only
 GET {{host}}/api/projects/1/pack.md?task=How does token budgeting choose detail levels&maxTokens=5000
+
+### Day 17: LLM
+GET {{host}}/api/llm/status
+
+### Local AI summaries for code files (slow on CPU: max 50 files per call)
+POST {{host}}/api/projects/1/summaries/refresh?generator=llm
+
+### Compare the local token count with the model's own (use maxTokens <= 4000)
+GET {{host}}/api/projects/1/token-check?task=How does incremental indexing decide a file changed&maxTokens=3000
+

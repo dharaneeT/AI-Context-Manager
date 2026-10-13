@@ -19,13 +19,13 @@ public class SummaryController {
 	private final SummaryService summaryService;
 	private final ProjectOverviewService overviewService;
 
-	@PostMapping("/summaries/refresh")
-	public SummaryRefreshResult refresh(
-		@PathVariable Long projectId,
-		@RequestParam(defaultValue = "false") boolean force
-	) {
-		return summaryService.refresh(projectId, force);
-	}
+	//	@PostMapping("/summaries/refresh")
+	//	public SummaryRefreshResult refresh(
+	//		@PathVariable Long projectId,
+	//		@RequestParam(defaultValue = "false") boolean force
+	//	) {
+	//		return summaryService.refresh(projectId, force);
+	//	}
 
 	@GetMapping("/summaries")
 	public SummaryResponse get(@PathVariable Long projectId, @RequestParam String path) {
@@ -36,5 +36,14 @@ public class SummaryController {
 	@GetMapping("/overview")
 	public ProjectOverview overview(@PathVariable Long projectId) {
 		return overviewService.overview(projectId);
+	}
+
+	@PostMapping("/summaries/refresh")
+	public SummaryRefreshResult refresh(
+		@PathVariable Long projectId,
+		@RequestParam(defaultValue = "false") boolean force,
+		@RequestParam(required = false) String generator
+	) {
+		return summaryService.refresh(projectId, force, generator);
 	}
 }
