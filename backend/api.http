@@ -95,3 +95,23 @@ POST {{host}}/api/projects/1/summaries/refresh?generator=llm
 ### Compare the local token count with the model's own (use maxTokens <= 4000)
 GET {{host}}/api/projects/1/token-check?task=How does incremental indexing decide a file changed&maxTokens=3000
 
+### Day 18: submit a task (pack only)
+POST {{host}}/api/projects/1/tasks
+Content-Type: application/json
+
+{ "task": "Fix the problem where ignored folders still get indexed", "maxTokens": 4000 }
+
+### Poll it (use the id from the response)
+GET {{host}}/api/projects/1/tasks/1
+
+### The pack as markdown
+GET {{host}}/api/projects/1/tasks/1/pack.md
+
+### History
+GET {{host}}/api/projects/1/tasks
+
+### Submit with a local-model answer (needs Ollama; poll for a few minutes)
+POST {{host}}/api/projects/1/tasks
+Content-Type: application/json
+
+{ "task": "Why might a re-index re-chunk files that did not change?", "maxTokens": 3000, "answer": true }
