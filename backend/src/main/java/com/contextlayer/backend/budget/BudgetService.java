@@ -21,8 +21,11 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class BudgetService {
 
-	/** Room for the section headings and instructions Day 16 wraps around the items. */
+	/** Initial guess for headings and the legend. The pack builder corrects it by measuring the real text. */
 	private static final int FRAMING_TOKENS = 150;
+
+	/** The expensive part (ranking, candidate options, token counts), done once per task. */
+	public record Prepared(Ranking ranking, String overview, List<Candidate> candidates, long projectTokens) {}
 
 	private final RankingService rankingService;
 	private final ProjectOverviewService overviewService;
@@ -31,20 +34,27 @@ public class BudgetService {
 	private final TokenCounter tokens;
 	private final BudgetProperties props;
 
-	public BudgetPlan plan(Long projectId, String task, Integer requestedTokens) {
+	public Prepared prepare(Long projectId, String task) {
 		if (task == null || task.isBlank()) {
 			throw new BadRequestException("task must not be blank");
 		}
-		int max = Math.min(
-			Math.max(requestedTokens == null ? props.defaultTokens() : requestedTokens, props.minTokens()),
-			props.maxTokens()
-		);
-
 		Ranking ranking = rankingService.rank(projectId, task, props.maxFiles());
 		String overview = overviewService.overview(projectId).toText();
+		List<Candidate> candidates = builder.build(projectId, ranking, props.maxFiles());
+		long projectTokens = indexingService.stats(projectId).estimatedTokens();
+		return new Prepared(ranking, overview, candidates, projectTokens);
+	}
 
+	public int clampBudget(Integer requested) {
+		int wanted = requested == null ? props.defaultTokens() : requested;
+		return Math.min(Math.max(wanted, props.minTokens()), props.maxTokens());
+	}
+
+	/** The cheap part: pick detail levels for a given budget. extraReserved = tokens the caller needs for framing. */
+	public BudgetPlan allocate(Prepared prepared, String task, int max, int extraReserved) {
 		int margin = (int) Math.ceil(max * props.safetyMarginPercent() / 100.0);
-		int reserved = tokens.count(overview) + tokens.count(task) + FRAMING_TOKENS;
+		int reserved =
+			tokens.count(prepared.overview()) + tokens.count(task) + FRAMING_TOKENS + Math.max(0, extraReserved);
 		int available = max - margin - reserved;
 		if (available < 100) {
 			throw new BadRequestException(
@@ -58,15 +68,13 @@ public class BudgetService {
 			);
 		}
 
-		List<Candidate> candidates = builder.build(projectId, ranking, props.maxFiles());
-		Allocation allocation = BudgetAllocator.allocate(candidates, available);
-
+		Allocation allocation = BudgetAllocator.allocate(prepared.candidates(), available);
 		Map<String, Choice> chosen = new HashMap<>();
 		allocation.chosen().forEach(c -> chosen.put(c.path(), c));
 
 		List<PlanItem> items = new ArrayList<>();
 		int fullFiles = 0;
-		for (Candidate c : candidates) {
+		for (Candidate c : prepared.candidates()) {
 			Choice choice = chosen.get(c.path());
 			if (choice != null) {
 				items.add(
@@ -83,21 +91,19 @@ public class BudgetService {
 				fullFiles += c.fullFileTokens();
 			}
 		}
-
-		long projectTokens = indexingService.stats(projectId).estimatedTokens(); // chars/4 estimate
 		int pack = allocation.usedTokens() + reserved;
 		return new BudgetPlan(
 			task,
-			ranking.keywords(),
-			ranking.semanticUsed(),
+			prepared.ranking().keywords(),
+			prepared.ranking().semanticUsed(),
 			max,
 			margin,
 			reserved,
 			available,
 			allocation.usedTokens(),
 			pack,
-			projectTokens,
-			reduction(pack, projectTokens),
+			prepared.projectTokens(),
+			reduction(pack, prepared.projectTokens()),
 			fullFiles,
 			reduction(allocation.usedTokens(), fullFiles),
 			items,
@@ -105,7 +111,12 @@ public class BudgetService {
 		);
 	}
 
-	private static double reduction(long used, long original) {
+	/** Day 14 behaviour, unchanged for callers. */
+	public BudgetPlan plan(Long projectId, String task, Integer requestedTokens) {
+		return allocate(prepare(projectId, task), task, clampBudget(requestedTokens), 0);
+	}
+
+	static double reduction(long used, long original) {
 		return original <= 0 ? 0 : Math.round(1000.0 * (1.0 - (double) used / original)) / 10.0;
 	}
 }

@@ -76,3 +76,12 @@ GET {{host}}/api/projects/1/budget-preview?task=Fix the problem where ignored fo
 ### Day 15: compression
 GET {{host}}/api/projects/1/compress-preview?path=backend/src/main/java/com/contextlayer/backend/indexing/IndexingService.java&q=incremental unchanged hash
 GET {{host}}/api/projects/1/budget-preview?task=Fix the problem where ignored folders still get indexed&maxTokens=6000&includeText=true
+
+### Day 16: pack
+POST {{host}}/api/projects/1/pack
+Content-Type: application/json
+
+{ "task": "Fix the problem where ignored folders still get indexed", "maxTokens": 6000 }
+
+### Day 16: markdown only
+GET {{host}}/api/projects/1/pack.md?task=How does token budgeting choose detail levels&maxTokens=5000

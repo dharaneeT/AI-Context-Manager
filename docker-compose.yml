@@ -13,7 +13,7 @@ services:
     volumes:
       - ./pgdata:/var/lib/postgresql/data # database files saved in the pgdata folder on your computer
     ports:
-      - "5434:5432" # so IntelliJ/DBeaver can still connect at localhost:5433
+      - "5434:5432" # so IntelliJ/DBeaver can still connect at localhost:5434
     healthcheck:
       test:
         ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d contextlayer"]
