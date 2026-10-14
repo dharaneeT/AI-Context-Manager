@@ -1,8 +1,20 @@
 import { useState } from "react";
 import { api } from "../api.js";
+import { toast } from "../toast.js";
+
+function statusDot(status) {
+  const s = status.toLowerCase();
+  if (s.includes("fail") || s.includes("error")) return "bad";
+  if (s.includes("index") && !s.includes("not")) return "warn";
+  if (s.includes("ready") || s.includes("up_to_date") || s.includes("idle"))
+    return "ok";
+  return "";
+}
 
 export default function ProjectSidebar({
+  open,
   projects,
+  loading,
   error,
   selectedId,
   onSelect,
@@ -12,6 +24,7 @@ export default function ProjectSidebar({
   const [rootPath, setRootPath] = useState("");
   const [formError, setFormError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState("");
 
   async function add(event) {
     event.preventDefault();
@@ -23,6 +36,7 @@ export default function ProjectSidebar({
       setRootPath("");
       onChanged();
       onSelect(created.id);
+      toast(`Project "${created.name ?? name}" added.`, "success");
     } catch (e) {
       setFormError(e.message);
     } finally {
@@ -40,68 +54,110 @@ export default function ProjectSidebar({
     try {
       await api.deleteProject(project.id);
       onChanged();
+      toast(`Project "${project.name}" deleted.`, "success");
     } catch (e) {
       setFormError(e.message);
     }
   }
 
-  return (
-    <aside className="sidebar">
-      <h3>Projects</h3>
-      {error && (
-        <p className="error small">Could not load projects: {error.message}</p>
-      )}
-      {projects.map((p) => (
-        <div
-          key={p.id}
-          className={`project ${p.id === selectedId ? "active" : ""}`}
-          onClick={() => onSelect(p.id)}
-        >
-          <span>
-            {p.name}
-            <small>{p.indexStatus.toLowerCase().replace("_", " ")}</small>
-          </span>
-          <button
-            className="btn danger small"
-            title="Delete project"
-            onClick={(e) => {
-              e.stopPropagation();
-              remove(p);
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      ))}
+  const visible = projects.filter((p) =>
+    p.name.toLowerCase().includes(filter.trim().toLowerCase()),
+  );
 
-      <form onSubmit={add} className="card">
-        <h3>Add project</h3>
-        <p>
-          <input
-            className="field"
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </p>
-        <p>
-          <input
-            className="field"
-            placeholder="Folder path"
-            value={rootPath}
-            onChange={(e) => setRootPath(e.target.value)}
-            required
-          />
-        </p>
-        <p className="muted small">
-          The path as the backend sees it (inside Docker, under /workspace).
-        </p>
-        <button className="btn" disabled={busy}>
-          {busy ? "Adding…" : "Add"}
-        </button>
-        {formError && <p className="error small">{formError}</p>}
-      </form>
+  return (
+    <aside className={`sidebar ${open ? "open" : ""}`}>
+      <div className="side-title">
+        <span>Projects ({projects.length})</span>
+        {loading && <span className="spinner" aria-label="Loading" />}
+      </div>
+
+      {projects.length > 4 && (
+        <input
+          className="field"
+          placeholder="Filter projects…"
+          aria-label="Filter projects"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+      )}
+
+      {error && (
+        <div className="alert error small">
+          Could not load projects: {error.message}
+        </div>
+      )}
+
+      {!loading && !error && projects.length === 0 && (
+        <p className="hint">No projects yet. Add your first folder below.</p>
+      )}
+
+      <ul className="project-list">
+        {visible.map((p) => (
+          <li
+            key={p.id}
+            className={`project ${p.id === selectedId ? "active" : ""}`}
+          >
+            <button
+              className="project-main"
+              aria-current={p.id === selectedId ? "true" : undefined}
+              onClick={() => onSelect(p.id)}
+            >
+              <span className={`dot ${statusDot(p.indexStatus)}`} />
+              <span className="grow">
+                <span className="project-name">{p.name}</span>
+                <small>{p.indexStatus.toLowerCase().replace("_", " ")}</small>
+              </span>
+            </button>
+            <button
+              className="icon-btn danger"
+              title="Delete project"
+              aria-label={`Delete ${p.name}`}
+              onClick={() => remove(p)}
+            >
+              ✕
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <details className="add-project" open={projects.length === 0}>
+        <summary>Add project</summary>
+        <form onSubmit={add}>
+          <div>
+            <label className="label" htmlFor="p-name">
+              Name
+            </label>
+            <input
+              id="p-name"
+              className="field"
+              placeholder="My app"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="p-path">
+              Folder path
+            </label>
+            <input
+              id="p-path"
+              className="field mono"
+              placeholder="/workspace/my-app"
+              value={rootPath}
+              onChange={(e) => setRootPath(e.target.value)}
+              required
+            />
+          </div>
+          <p className="hint">
+            The path as the backend sees it (inside Docker, under /workspace).
+          </p>
+          <button className="btn" disabled={busy}>
+            {busy ? "Adding…" : "Add project"}
+          </button>
+          {formError && <div className="alert error small">{formError}</div>}
+        </form>
+      </details>
     </aside>
   );
 }

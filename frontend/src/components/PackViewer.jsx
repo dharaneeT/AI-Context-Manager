@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { toast } from "../toast.js";
+import CopyButton from "./CopyButton";
 
 function download(filename, text) {
   const url = URL.createObjectURL(new Blob([text], { type: "text/markdown" }));
@@ -7,27 +9,27 @@ function download(filename, text) {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+  toast(`Downloaded ${filename}`, "success");
 }
 
 export default function PackViewer({ task }) {
-  const [copied, setCopied] = useState(false);
+  const [filter, setFilter] = useState("");
   const pack = task.pack;
-  if (!pack) return <p className="muted">No pack available.</p>;
+  if (!pack)
+    return (
+      <div className="empty">
+        <b>No pack available</b>
+        This task finished without a context pack.
+      </div>
+    );
 
   const used = Math.min(
     100,
     Math.round((pack.packTokens / pack.targetTokens) * 100),
   );
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(pack.markdown);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // clipboard access can be blocked; the Download button still works
-    }
-  }
+  const items = pack.items.filter((i) =>
+    i.path.toLowerCase().includes(filter.trim().toLowerCase()),
+  );
 
   return (
     <>
@@ -41,92 +43,112 @@ export default function PackViewer({ task }) {
             {pack.withinBudget ? "within budget" : "over budget"}
           </span>
         </div>
-        <div className="bar" style={{ margin: "0.5rem 0" }}>
+        <div className="bar" style={{ margin: "0.6rem 0" }}>
           <div
             className={pack.withinBudget ? "" : "over"}
             style={{ width: `${used}%` }}
           />
         </div>
-        <p className="small muted" style={{ margin: 0 }}>
+        <p className="small muted">
           {pack.reductionVsProjectPercent}% smaller than sending the whole
-          project (~
-          {pack.projectTokens.toLocaleString()} tokens)
+          project (~{pack.projectTokens.toLocaleString()} tokens)
           {!pack.semanticUsed && " · keyword-only ranking"}
         </p>
         {pack.notes.map((n) => (
-          <p
-            key={n}
-            className="small"
-            style={{ margin: "0.3rem 0 0", color: "var(--warn)" }}
-          >
+          <div key={n} className="alert warn small">
             {n}
-          </p>
+          </div>
         ))}
       </div>
 
       {task.answer && (
         <div className="card">
-          <h3>Answer</h3>
+          <div className="section-head" style={{ margin: "0 0 0.6rem" }}>
+            <h3>Answer</h3>
+            <CopyButton text={task.answer.text} />
+          </div>
           <pre className="block" style={{ maxHeight: "none" }}>
             {task.answer.text}
           </pre>
-          <p className="small muted">
+          <p className="small muted" style={{ marginTop: "0.5rem" }}>
             {task.answer.model} · {task.answer.inputTokens?.toLocaleString()} in
             / {task.answer.outputTokens?.toLocaleString()} out
           </p>
         </div>
       )}
       {task.answerError && (
-        <p className="error small">No answer: {task.answerError}</p>
+        <div className="alert error small">No answer: {task.answerError}</div>
       )}
 
-      <h3>Why these files</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>File</th>
-            <th>Detail</th>
-            <th>Tokens</th>
-            <th>Score</th>
-            <th>Reasons</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pack.items.map((i) => (
-            <tr key={i.path}>
-              <td>
-                <code>{i.path}</code>
-              </td>
-              <td>
-                <span className="badge">
-                  {i.level.toLowerCase().replace("_", " ")}
-                </span>
-              </td>
-              <td>{i.tokens.toLocaleString()}</td>
-              <td className="score">
-                <div className="bar">
-                  <div style={{ width: `${Math.round(i.score * 100)}%` }} />
-                </div>
-              </td>
-              <td>
-                <ul className="reasons">
-                  {i.reasons.slice(0, 4).map((r) => (
-                    <li key={r}>{r}</li>
-                  ))}
-                </ul>
-              </td>
+      <div className="section-head">
+        <h3>
+          Why these files{" "}
+          <span className="muted small">({pack.items.length})</span>
+        </h3>
+        {pack.items.length > 6 && (
+          <input
+            className="field"
+            style={{ maxWidth: 220 }}
+            placeholder="Filter files…"
+            aria-label="Filter files"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        )}
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Detail</th>
+              <th>Tokens</th>
+              <th>Score</th>
+              <th>Reasons</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((i) => (
+              <tr key={i.path}>
+                <td>
+                  <code>{i.path}</code>
+                </td>
+                <td>
+                  <span className="badge">
+                    {i.level.toLowerCase().replace("_", " ")}
+                  </span>
+                </td>
+                <td className="num">{i.tokens.toLocaleString()}</td>
+                <td className="score" title={`${Math.round(i.score * 100)}%`}>
+                  <div className="bar thin">
+                    <div style={{ width: `${Math.round(i.score * 100)}%` }} />
+                  </div>
+                </td>
+                <td>
+                  <ul className="reasons">
+                    {i.reasons.slice(0, 4).map((r) => (
+                      <li key={r}>{r}</li>
+                    ))}
+                  </ul>
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={5} className="muted">
+                  No files match “{filter}”.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      <div className="row" style={{ margin: "1rem 0 0.5rem" }}>
-        <h3 style={{ margin: 0, flex: 1 }}>The pack</h3>
-        <button className="btn secondary" onClick={copy}>
-          {copied ? "Copied ✓" : "Copy"}
-        </button>
+      <div className="section-head">
+        <h3>The pack</h3>
+        <CopyButton text={pack.markdown} />
         <button
-          className="btn secondary"
+          className="btn secondary small"
           onClick={() => download(`context-pack-${task.id}.md`, pack.markdown)}
         >
           Download .md

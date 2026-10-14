@@ -30,7 +30,7 @@ services:
       db:
         condition: service_healthy # wait until the database is ready
     environment:
-      DB_URL: jdbc:postgresql://db:5432/contextlayer # "db" is the name of box 1
+      DB_URL: jdbc:postgresql://db:5432/contextlayer
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD}
       CONTEXTLAYER_EMBEDDING_OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
@@ -39,6 +39,10 @@ services:
       CONTEXTLAYER_EMBEDDING_OLLAMA_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
       CONTEXTLAYER_EMBEDDING_QUERY_PREFIX: ${EMBEDDING_QUERY_PREFIX:-}
       CONTEXTLAYER_EMBEDDING_DOCUMENT_PREFIX: ${EMBEDDING_DOCUMENT_PREFIX:-}
+      CONTEXTLAYER_LLM_BASE_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}   # new
+      SERVER_ADDRESS: 0.0.0.0                                                     # new
+      CONTEXTLAYER_PROJECTS_ALLOWED_ROOTS: /workspace                             # new
+      JAVA_TOOL_OPTIONS: "-Xmx512m"                                               # new
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

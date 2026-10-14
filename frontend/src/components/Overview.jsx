@@ -1,13 +1,27 @@
 import { useState } from "react";
 import { api } from "../api.js";
 import { useAsync } from "../useAsync";
+import { toast } from "../toast.js";
+
+const DONE = {
+  refresh: "Index refreshed.",
+  rebuild: "Full rebuild finished.",
+  summaries: "AI summaries finished.",
+};
 
 function List({ title, items }) {
   if (!items?.length) return null;
   return (
-    <p className="small">
-      <b>{title}:</b> {items.join(", ")}
-    </p>
+    <div style={{ marginBottom: "0.8rem" }}>
+      <div className="label">{title}</div>
+      <div className="chips">
+        {items.map((item) => (
+          <span key={item} className="chip-static">
+            {item}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -38,8 +52,10 @@ export default function Overview({ projectId }) {
     try {
       setReport(await action());
       reloadAll();
+      toast(DONE[label] ?? "Done.", "success");
     } catch (e) {
       setError(e.message);
+      toast("That action failed.", "error");
     } finally {
       setBusy(null);
     }
@@ -56,106 +72,144 @@ export default function Overview({ projectId }) {
   const s = stats.data;
   const e = embeddings.data;
   const llmReady = Boolean(llm.data?.configured);
+  const totalBytes = s?.languages?.reduce((sum, l) => sum + l.bytes, 0) || 1;
 
   return (
     <>
-      <div className="row">
-        <button
-          className="btn"
-          disabled={busy}
-          onClick={() => run("refresh", () => api.refresh(projectId, false))}
-        >
-          {busy === "refresh" ? "Refreshing…" : "Refresh index"}
-        </button>
-        <button
-          className="btn secondary"
-          disabled={busy}
-          onClick={() => run("rebuild", () => api.refresh(projectId, true))}
-        >
-          {busy === "rebuild" ? "Rebuilding…" : "Full rebuild"}
-        </button>
-        <button
-          className="btn secondary"
-          disabled={busy || !llmReady}
-          title={
-            llmReady ? "" : "Start Ollama on this machine, then reload this tab"
-          }
-          onClick={aiSummaries}
-        >
-          {busy === "summaries" ? "Summarising…" : "AI summaries (local)"}
-        </button>
+      <div className="card flat">
+        <div className="section-title">Index actions</div>
+        <div className="row">
+          <button
+            className="btn"
+            disabled={Boolean(busy)}
+            onClick={() => run("refresh", () => api.refresh(projectId, false))}
+          >
+            {busy === "refresh" ? "Refreshing…" : "Refresh index"}
+          </button>
+          <button
+            className="btn secondary"
+            disabled={Boolean(busy)}
+            onClick={() => run("rebuild", () => api.refresh(projectId, true))}
+          >
+            {busy === "rebuild" ? "Rebuilding…" : "Full rebuild"}
+          </button>
+          <button
+            className="btn secondary"
+            disabled={Boolean(busy) || !llmReady}
+            title={
+              llmReady
+                ? ""
+                : "Start Ollama on this machine, then reload this tab"
+            }
+            onClick={aiSummaries}
+          >
+            {busy === "summaries" ? "Summarising…" : "AI summaries (local)"}
+          </button>
+        </div>
         {busy && (
-          <span className="muted">
+          <div className="status-line">
             <span className="spinner" />
-            working, this can take a while on a large project
-          </span>
+            Working. This can take a while on a large project.
+          </div>
+        )}
+        {!llmReady && llm.data && (
+          <p className="hint" style={{ marginTop: "0.6rem" }}>
+            AI summaries need Ollama running on this machine.
+          </p>
         )}
       </div>
-      {error && <p className="error">{error}</p>}
-      {report && <pre className="block">{JSON.stringify(report, null, 2)}</pre>}
 
-      {stats.error && <p className="error">{stats.error.message}</p>}
+      {error && <div className="alert error">{error}</div>}
+      {report && (
+        <details className="fold" open>
+          <summary>Last action result</summary>
+          <pre className="block">{JSON.stringify(report, null, 2)}</pre>
+        </details>
+      )}
+
+      {stats.error && <div className="alert error">{stats.error.message}</div>}
+      {stats.loading && !s && (
+        <div className="status-line">
+          <span className="spinner" />
+          Loading index stats…
+        </div>
+      )}
       {s && (
-        <div className="card grid">
+        <div className="grid" style={{ margin: "0.9rem 0" }}>
           <div className="stat">
-            <span className="muted small">status</span>
+            <span>Status</span>
             <b>{s.status.toLowerCase().replace("_", " ")}</b>
           </div>
           <div className="stat">
-            <span className="muted small">files</span>
+            <span>Files</span>
             <b>{s.files.toLocaleString()}</b>
           </div>
           <div className="stat">
-            <span className="muted small">chunks</span>
+            <span>Chunks</span>
             <b>{s.chunks.toLocaleString()}</b>
           </div>
           <div className="stat">
-            <span className="muted small">project size</span>
+            <span>Project size</span>
             <b>~{s.estimatedTokens.toLocaleString()} tok</b>
           </div>
           <div className="stat">
-            <span className="muted small">embedded</span>
+            <span>Embedded</span>
             <b>
               {e ? (e.available ? `${e.embedded}/${e.chunks}` : "off") : "…"}
             </b>
           </div>
           <div className="stat">
-            <span className="muted small">local LLM</span>
+            <span>Local LLM</span>
             <b>{llm.data ? (llmReady ? "ready" : "off") : "…"}</b>
           </div>
         </div>
       )}
       {e && !e.available && (
-        <p className="muted small">
+        <div className="alert warn small">
           Semantic search is off: {e.unavailableReason}
-        </p>
+        </div>
       )}
       {s?.lastIndexedAt && (
-        <p className="muted small">
+        <p className="hint">
           Last indexed {new Date(s.lastIndexedAt).toLocaleString()}
         </p>
       )}
 
       {s?.languages?.length > 0 && (
-        <div className="card">
-          <h3>Languages</h3>
-          <table>
-            <tbody>
-              {s.languages.slice(0, 8).map((l) => (
-                <tr key={l.language}>
-                  <td>{l.language}</td>
-                  <td>{l.files} files</td>
-                  <td className="muted">{(l.bytes / 1024).toFixed(0)} KB</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="section-head">
+            <h3>Languages</h3>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <tbody>
+                {s.languages.slice(0, 8).map((l) => (
+                  <tr key={l.language}>
+                    <td>{l.language}</td>
+                    <td className="num">{l.files} files</td>
+                    <td className="num muted">
+                      {(l.bytes / 1024).toFixed(0)} KB
+                    </td>
+                    <td style={{ width: "30%" }}>
+                      <div className="bar thin">
+                        <div
+                          style={{
+                            width: `${Math.max(2, Math.round((l.bytes / totalBytes) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {overview.data && (
-        <div className="card">
-          <h3>Project memory</h3>
+        <div className="card flat" style={{ marginTop: "1.2rem" }}>
+          <div className="section-title">Project memory</div>
           <List title="Top folders" items={overview.data.topFolders} />
           <List title="Entry points" items={overview.data.entryPoints} />
           <List title="Most depended-on" items={overview.data.mostDependedOn} />

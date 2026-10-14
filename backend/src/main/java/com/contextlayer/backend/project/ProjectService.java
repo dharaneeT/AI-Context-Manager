@@ -3,6 +3,7 @@ package com.contextlayer.backend.project;
 import com.contextlayer.backend.common.BadRequestException;
 import com.contextlayer.backend.common.ConflictException;
 import com.contextlayer.backend.common.NotFoundException;
+import com.contextlayer.backend.config.ProjectsProperties;
 import com.contextlayer.backend.project.dto.CreateProjectRequest;
 import com.contextlayer.backend.project.dto.ProjectResponse;
 import java.nio.file.Files;
@@ -19,13 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProjectService {
 
 	private final ProjectRepository projectRepository;
+	private final ProjectsProperties projectsProperties;
 
 	@Transactional
 	public ProjectResponse create(CreateProjectRequest request) {
-		//These paths may point to the same location:
-
-		//Normalization removes redundant path elements, 
-		// and converting to an absolute path gives a consistent representation.
 		String normalizedRoot = resolveRoot(request.rootPath()).toString();
 
 		if (projectRepository.existsByRootPath(normalizedRoot)) {
@@ -40,6 +38,7 @@ public class ProjectService {
 				.description(request.description())
 				.build()
 		);
+
 		return ProjectResponse.from(saved);
 	}
 
@@ -68,19 +67,41 @@ public class ProjectService {
 		if (!projectRepository.existsById(id)) {
 			throw new NotFoundException("Project " + id + " not found");
 		}
-		projectRepository.deleteById(id); // files and chunks vanish via ON DELETE CASCADE
+
+		projectRepository.deleteById(id);
+		// Files and chunks vanish via ON DELETE CASCADE.
 	}
 
-	private static Path resolveRoot(String raw) {
+	private Path resolveRoot(String raw) {
 		Path path;
+
 		try {
 			path = Path.of(raw.strip()).toAbsolutePath().normalize();
 		} catch (InvalidPathException e) {
 			throw new BadRequestException("Not a valid path: " + raw);
 		}
+
+		if (!isUnderAllowedRoots(path, projectsProperties.allowedRoots())) {
+			throw new BadRequestException("Folder is outside the allowed project roots: " + path);
+		}
+
 		if (!Files.isDirectory(path)) {
 			throw new BadRequestException("Folder does not exist or is not a directory: " + path);
 		}
+
 		return path;
+	}
+
+	/**
+	 * An empty allowed-roots list allows any folder.
+	 * Path comparisons avoid incorrect string-prefix matches, such as /work2 being
+	 * considered inside /work.
+	 */
+	static boolean isUnderAllowedRoots(Path path, List<String> allowedRoots) {
+		if (allowedRoots == null || allowedRoots.isEmpty()) {
+			return true;
+		}
+
+		return allowedRoots.stream().map(root -> Path.of(root).toAbsolutePath().normalize()).anyMatch(path::startsWith);
 	}
 }

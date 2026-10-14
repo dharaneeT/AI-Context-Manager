@@ -1,64 +1,133 @@
 :root {
-  --bg: #ffffff;
-  --fg: #1d2330;
-  --muted: #667085;
-  --border: #e4e7ec;
-  --card: #f7f8fa;
-  --accent: #4f46e5;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --fg: #171b24;
+  --muted: #5d6677;
+  --border: #dde1e8;
+  --border-strong: #c3cad6;
+  --accent: #0f766e;
+  --accent-hover: #0b5f58;
+  --accent-soft: rgba(15, 118, 110, 0.12);
   --accent-fg: #ffffff;
-  --ok: #168a45;
-  --bad: #c62828;
-  --warn: #b45309;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  line-height: 1.5;
-  color-scheme: light dark;
+  --ok: #167a40;
+  --bad: #c0292b;
+  --warn: #a8570a;
+  --ok-soft: rgba(22, 122, 64, 0.12);
+  --bad-soft: rgba(192, 41, 43, 0.1);
+  --warn-soft: rgba(168, 87, 10, 0.12);
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 4px 14px rgba(16, 24, 40, 0.05);
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  font-family: var(--sans);
+  line-height: 1.55;
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1218;
-    --fg: #e6e9f0;
-    --muted: #98a2b3;
-    --border: #2a3140;
-    --card: #171b24;
-    --accent: #8b8cf7;
-    --accent-fg: #0f1218;
+  :root:not([data-theme="light"]) {
+    --bg: #0c1016;
+    --surface: #131822;
+    --surface-2: #1a2030;
+    --fg: #e7eaf1;
+    --muted: #93a0b5;
+    --border: #252d3d;
+    --border-strong: #35405a;
+    --accent: #2dd4bf;
+    --accent-hover: #5eead4;
+    --accent-soft: rgba(45, 212, 191, 0.14);
+    --accent-fg: #07130f;
     --ok: #4ade80;
     --bad: #f87171;
     --warn: #fbbf24;
+    --ok-soft: rgba(74, 222, 128, 0.12);
+    --bad-soft: rgba(248, 113, 113, 0.12);
+    --warn-soft: rgba(251, 191, 36, 0.12);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.25);
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0c1016;
+  --surface: #131822;
+  --surface-2: #1a2030;
+  --fg: #e7eaf1;
+  --muted: #93a0b5;
+  --border: #252d3d;
+  --border-strong: #35405a;
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-soft: rgba(45, 212, 191, 0.14);
+  --accent-fg: #07130f;
+  --ok: #4ade80;
+  --bad: #f87171;
+  --warn: #fbbf24;
+  --ok-soft: rgba(74, 222, 128, 0.12);
+  --bad-soft: rgba(248, 113, 113, 0.12);
+  --warn-soft: rgba(251, 191, 36, 0.12);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.25);
+  color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
 }
+html,
+body,
+#root {
+  height: 100%;
+}
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
 }
 h1,
 h2,
 h3 {
-  margin: 0 0 0.5rem;
+  margin: 0;
   line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+p {
+  margin: 0;
 }
 button {
   font: inherit;
   cursor: pointer;
+  color: inherit;
 }
 input,
-textarea {
+textarea,
+select {
   font: inherit;
   color: inherit;
 }
 code,
 pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
+  font-family: var(--mono);
+  font-size: 0.84rem;
+}
+::selection {
+  background: var(--accent-soft);
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

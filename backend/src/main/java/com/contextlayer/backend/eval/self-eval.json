@@ -1,0 +1,16 @@
+{
+  "k": 5,
+  "maxTokens": 6000,
+  "cases": [
+    { "task": "Ignored folders still get indexed even though they are in .gitignore", "expected": ["IgnoreRules.java", "ProjectScanner.java"] },
+    { "task": "Unchanged files are being re-chunked on every index run", "expected": ["IndexingService.java"] },
+    { "task": "The pack goes over the token budget when many files are selected", "expected": ["BudgetAllocator.java", "PackService.java"] },
+    { "task": "Co-change pairs are polluted by huge reformatting commits", "expected": ["GitIntelligenceService.java"] },
+    { "task": "Relative imports in Python files are not resolved", "expected": ["PythonImportStrategy.java"] },
+    { "task": "Chunks are being cut in the middle of a method", "expected": ["Chunker.java"] },
+    { "task": "Semantic results should count more than keyword results when fusing", "expected": ["ReciprocalRankFusion.java", "HybridSearchService.java"] },
+    { "task": "Startup fails when the embedding dimension in the config changed", "expected": ["VectorStore.java"] },
+    { "task": "The focused view should keep the whole method that matches the task", "expected": ["FocusedView.java"] },
+    { "task": "API keys and passwords must not appear in the context pack", "expected": ["SecretRedactor.java"] }
+  ]
+}

@@ -32,7 +32,7 @@ const json = (method, body) => ({
 const projectPath = (id) => `/api/projects/${id}`;
 
 export const api = {
-  health: () => request("/actuator/health"),
+  health: () => request("/api/health"),
   projects: () => request("/api/projects"),
   createProject: (body) => request("/api/projects", json("POST", body)),
   deleteProject: (id) => request(projectPath(id), { method: "DELETE" }),

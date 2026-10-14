@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { api } from "../api.js";
 import { useAsync } from "../useAsync";
+import { toast } from "../toast.js";
 import TaskResult from "./TaskResult";
+
+const PRESETS = [2000, 4000, 8000, 16000];
 
 export default function PackBuilder({ projectId, taskId, onCreated }) {
   const llm = useAsync(() => api.llmStatus(), []);
@@ -15,7 +18,8 @@ export default function PackBuilder({ projectId, taskId, onCreated }) {
   const answer = wantAnswer && canAnswer;
 
   async function submit(event) {
-    event.preventDefault();
+    event?.preventDefault();
+    if (!task.trim() || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -25,6 +29,7 @@ export default function PackBuilder({ projectId, taskId, onCreated }) {
         answer,
       });
       onCreated(created.id);
+      toast("Task submitted. Building the pack…", "success");
     } catch (e) {
       setError(e.message);
     } finally {
@@ -32,21 +37,46 @@ export default function PackBuilder({ projectId, taskId, onCreated }) {
     }
   }
 
+  function onKeyDown(event) {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) submit();
+  }
+
   return (
     <>
-      <form onSubmit={submit}>
+      <form onSubmit={submit} className="card">
+        <label className="label" htmlFor="task">
+          What do you want to do?
+        </label>
         <textarea
+          id="task"
           className="field"
           placeholder="Describe the task, e.g. “Fix the authentication timeout issue”"
           value={task}
           onChange={(e) => setTask(e.target.value)}
+          onKeyDown={onKeyDown}
           required
         />
-        <div className="row" style={{ marginTop: "0.6rem" }}>
-          <label className="small">
-            Token budget: <b>{maxTokens.toLocaleString()}</b>
-            <br />
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <span className="hint">Tip: press Ctrl/⌘ + Enter to build.</span>
+          <span className="hint">
+            {task.length.toLocaleString()} characters
+          </span>
+        </div>
+
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            marginTop: "1rem",
+            gap: "1.25rem",
+          }}
+        >
+          <div>
+            <label className="label" htmlFor="budget">
+              Token budget: <b>{maxTokens.toLocaleString()}</b>
+            </label>
             <input
+              id="budget"
               type="range"
               min="1000"
               max="30000"
@@ -54,9 +84,22 @@ export default function PackBuilder({ projectId, taskId, onCreated }) {
               value={maxTokens}
               onChange={(e) => setMaxTokens(Number(e.target.value))}
             />
-          </label>
+            <div className="chips" style={{ marginTop: "0.4rem" }}>
+              {PRESETS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`chip ${maxTokens === p ? "active" : ""}`}
+                  onClick={() => setMaxTokens(p)}
+                >
+                  {p / 1000}k
+                </button>
+              ))}
+            </div>
+          </div>
+
           <label
-            className="small"
+            className={`check ${canAnswer ? "" : "disabled"}`}
             title={
               canAnswer
                 ? ""
@@ -68,29 +111,51 @@ export default function PackBuilder({ projectId, taskId, onCreated }) {
               checked={answer}
               disabled={!canAnswer}
               onChange={(e) => setWantAnswer(e.target.checked)}
-            />{" "}
-            Also ask the local model to answer
-            <br />
-            <span className="muted">
-              runs on your PC and can take a few minutes. Needs a budget of
-              5,000 or less
+            />
+            <span>
+              <b className="small">Also ask the local model to answer</b>
+              <br />
+              <span className="hint">
+                Runs on your PC and can take a few minutes. Needs a budget of
+                5,000 or less.
+              </span>
             </span>
           </label>
-          <button className="btn" disabled={busy}>
-            {busy ? "Submitting…" : "Build context pack"}
-          </button>
         </div>
+
         {answer && maxTokens > 5000 && (
-          <p className="small" style={{ color: "var(--warn)" }}>
+          <div className="alert warn">
             With a budget above 5,000 the pack is too big for the local model.
             You will get the pack but no answer.
-          </p>
+          </div>
         )}
-        {error && <p className="error">{error}</p>}
+        {error && <div className="alert error">{error}</div>}
+
+        <div className="row" style={{ marginTop: "1rem" }}>
+          <button className="btn" disabled={busy || !task.trim()}>
+            {busy ? (
+              <>
+                <span
+                  className="spinner"
+                  style={{ margin: 0, borderTopColor: "currentColor" }}
+                />
+                Submitting…
+              </>
+            ) : (
+              "Build context pack"
+            )}
+          </button>
+        </div>
       </form>
 
-      {taskId && (
+      {taskId ? (
         <TaskResult key={taskId} projectId={projectId} taskId={taskId} />
+      ) : (
+        <div className="empty">
+          <b>No context pack yet</b>
+          Describe a task above. ContextLayer picks the files that matter and
+          fits them into your token budget.
+        </div>
       )}
     </>
   );
