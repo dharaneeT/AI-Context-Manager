@@ -1,0 +1,86 @@
+/* Styles for the Developer file pack panel. Uses the colour variables from index.css. */
+
+.fp-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  margin-top: 1rem;
+}
+
+@media (max-width: 900px) {
+  .fp-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.fp-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fp-group-title {
+  margin: 1rem 0 0.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.fp-item {
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.6rem 0.4rem;
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.fp-item.active {
+  background: var(--accent-soft);
+}
+
+.fp-item input[type="checkbox"] {
+  margin-top: 0.3rem;
+}
+
+.fp-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.fp-path {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  text-align: left;
+  word-break: break-all;
+  cursor: pointer;
+}
+
+.fp-path:hover {
+  text-decoration: underline;
+}
+
+.fp-preview {
+  position: sticky;
+  top: 1rem;
+}
+
+.fp-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  margin: 0.8rem 0 0.4rem;
+}

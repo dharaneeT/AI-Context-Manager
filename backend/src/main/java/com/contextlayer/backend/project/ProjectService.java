@@ -73,7 +73,7 @@ public class ProjectService {
 	}
 
 	private Path resolveRoot(String raw) {
-		Path path;
+		Path path; //An object that may be used to locate a file in a file system
 
 		try {
 			path = Path.of(raw.strip()).toAbsolutePath().normalize();

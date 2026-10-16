@@ -5,6 +5,12 @@ backend/target/
 frontend/node_modules/
 frontend/dist/
 
+# Python agent
+agent/.venv/
+agent/.agent_data/
+__pycache__/
+*.pyc
+
 # IDE
 .idea/
 .vscode/
@@ -13,9 +19,10 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 
-# Environment
+# Environment (secrets). The .env.example templates ARE committed.
 .env
 .env.*
+!.env.example
 
 # Logs
 *.log
