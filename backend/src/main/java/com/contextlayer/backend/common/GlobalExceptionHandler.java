@@ -1,5 +1,6 @@
 package com.contextlayer.backend.common;
 
+import com.contextlayer.backend.agent.AgentServiceException;
 import com.contextlayer.backend.embedding.EmbeddingException;
 import com.contextlayer.backend.git.GitException;
 import com.contextlayer.backend.llm.LlmException;
@@ -78,12 +79,24 @@ public class GlobalExceptionHandler {
 		);
 	}
 
+	@ExceptionHandler(AgentServiceException.class)
+	public ResponseEntity<ApiError> handleAgent(AgentServiceException ex, HttpServletRequest request) {
+		return build(
+			ex.isUnavailable() ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.BAD_GATEWAY,
+			ex.getMessage(),
+			request,
+			null
+		);
+	}
+
 	/** The database went away (stopped container, restart, sleep). Say so instead of a bare 500. */
-	@ExceptionHandler({
-		CannotCreateTransactionException.class,
-		CannotGetJdbcConnectionException.class,
-		DataAccessResourceFailureException.class,
-	})
+	@ExceptionHandler(
+		{
+			CannotCreateTransactionException.class,
+			CannotGetJdbcConnectionException.class,
+			DataAccessResourceFailureException.class
+		}
+	)
 	public ResponseEntity<ApiError> handleDatabaseDown(Exception ex, HttpServletRequest request) {
 		return build(
 			HttpStatus.SERVICE_UNAVAILABLE,
