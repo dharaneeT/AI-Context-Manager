@@ -1,0 +1,64 @@
+.agent-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.agent-steps li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  font-size: 0.9rem;
+}
+.agent-steps .dot-state {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--border-strong);
+  flex: none;
+}
+.agent-steps .done .dot-state {
+  background: var(--ok);
+}
+.agent-steps .failed .dot-state {
+  background: var(--bad);
+}
+.agent-steps .waiting .dot-state,
+.agent-steps .running .dot-state {
+  background: var(--warn);
+}
+.agent-section {
+  margin-top: 1rem;
+}
+.agent-cols {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.plan-step {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.plan-step .row {
+  align-items: center;
+  gap: 0.5rem;
+}
+.plan-step textarea.field {
+  min-height: 3.2rem;
+}
+.agent-list {
+  margin: 0.3rem 0 0;
+  padding-left: 1.2rem;
+}
+.agent-list li {
+  margin: 0.15rem 0;
+}
+.agent-path {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  word-break: break-all;
+}

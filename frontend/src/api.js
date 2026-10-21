@@ -30,6 +30,8 @@ const json = (method, body) => ({
 });
 
 const projectPath = (id) => `/api/projects/${id}`;
+const agentPath = (id, taskId = "") =>
+  `${projectPath(id)}/agent/tasks${taskId ? `/${taskId}` : ""}`;
 
 export const api = {
   health: () => request("/api/health"),
@@ -61,4 +63,25 @@ export const api = {
   task: (id, taskId) => request(`${projectPath(id)}/tasks/${taskId}`),
   deleteTask: (id, taskId) =>
     request(`${projectPath(id)}/tasks/${taskId}`, { method: "DELETE" }),
+
+  // ---- agent (Days 2 to 10) ----
+  agentStatus: () => request("/api/agent/status"),
+  agentTasks: (id) => request(agentPath(id)),
+  agentTask: (id, taskId) => request(agentPath(id, taskId)),
+  createAgentTask: (id, body) => request(agentPath(id), json("POST", body)),
+  deleteAgentTask: (id, taskId) =>
+    request(agentPath(id, taskId), { method: "DELETE" }),
+  cancelAgentTask: (id, taskId) =>
+    request(`${agentPath(id, taskId)}/cancel`, { method: "POST" }),
+  answerAgentTask: (id, taskId, answers) =>
+    request(`${agentPath(id, taskId)}/answers`, json("POST", { answers })),
+  agentPack: (id, taskId) => request(`${agentPath(id, taskId)}/pack.md`),
+  agentPlanMarkdown: (id, taskId) =>
+    request(`${agentPath(id, taskId)}/plan.md`),
+  editAgentPlan: (id, taskId, body) =>
+    request(`${agentPath(id, taskId)}/plan`, json("PUT", body)),
+  approveAgentPlan: (id, taskId, body) =>
+    request(`${agentPath(id, taskId)}/approve`, json("POST", body)),
+  rejectAgentPlan: (id, taskId, reason) =>
+    request(`${agentPath(id, taskId)}/reject`, json("POST", { reason })),
 };

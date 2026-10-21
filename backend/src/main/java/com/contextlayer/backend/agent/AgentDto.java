@@ -21,6 +21,14 @@ public final class AgentDto {
 	/** {"q1": "my answer"}. An empty map means "skip the questions, use your assumptions". */
 	public record AnswerRequest(@NotNull Map<String, String> answers) {}
 
+	/** One edited plan: the steps exactly as the Python agent expects them (title, description, action, files ...). */
+	public record PlanEditRequest(@NotNull List<Map<String, Object>> steps, @Size(max = 300) String summary) {}
+
+	/** The person approves one specific plan version and acknowledges every risky step it contains. */
+	public record ApproveRequest(@NotNull @Min(1) Integer version, List<String> acknowledged, @Size(max = 1000) String note) {}
+
+	public record RejectRequest(@NotBlank @Size(max = 500) String reason) {}
+
 	/**
 	 * steps and items come from the live Python run when it is reachable (null otherwise).
 	 * details is the rest of that run (understanding, profile, impact, plan ...): what the UI reads.
@@ -40,6 +48,11 @@ public final class AgentDto {
 		Integer windowedFiles,
 		Integer pathOnlyFiles,
 		boolean packReady,
+		Integer planVersion,
+		String planGeneratedBy,
+		boolean planReady,
+		Instant decidedAt,
+		String decisionNote,
 		List<Map<String, Object>> steps,
 		List<Map<String, Object>> items,
 		Map<String, Object> details
@@ -65,6 +78,11 @@ public final class AgentDto {
 				t.getWindowedFiles(),
 				t.getPathOnlyFiles(),
 				t.getPackMarkdown() != null,
+				t.getPlanVersion(),
+				t.getPlanGeneratedBy(),
+				t.getPlanMarkdown() != null,
+				t.getDecidedAt(),
+				t.getDecisionNote(),
 				steps,
 				items,
 				details

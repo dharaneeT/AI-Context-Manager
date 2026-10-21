@@ -1,6 +1,9 @@
 package com.contextlayer.backend.agent;
 
+import com.contextlayer.backend.agent.AgentDto.ApproveRequest;
 import com.contextlayer.backend.agent.AgentDto.CreateRequest;
+import com.contextlayer.backend.agent.AgentDto.PlanEditRequest;
+import com.contextlayer.backend.agent.AgentDto.RejectRequest;
 import com.contextlayer.backend.agent.AgentDto.TaskView;
 import com.contextlayer.backend.common.ConflictException;
 import com.contextlayer.backend.common.NotFoundException;
@@ -64,9 +67,7 @@ public class AgentTaskService {
 
 	public TaskView get(Long projectId, Long taskId) {
 		AgentTask task = find(projectId, taskId);
-		Refreshed refreshed = task.getStatus().isTerminal()
-			? new Refreshed(task, fetchRunQuietly(taskId))
-			: refresh(task);
+		Refreshed refreshed = task.getStatus().isTerminal() ? new Refreshed(task, fetchRunQuietly(taskId)) : refresh(task);
 		return view(refreshed.task(), refreshed.run());
 	}
 
@@ -81,6 +82,64 @@ public class AgentTaskService {
 		Map<String, Object> run = agent
 			.runPost(taskId, "answers", body)
 			.orElseThrow(() -> new NotFoundException("The agent has no record of task " + taskId));
+		apply(task, run);
+		return view(repository.save(task), run);
+	}
+
+	/** The latest plan (and its markdown) as the agent has it, for the plan viewer and editor. */
+	public Map<String, Object> plan(Long projectId, Long taskId) {
+		find(projectId, taskId);
+		return agent
+			.runGet(taskId, "/plan")
+			.orElseThrow(() -> new NotFoundException("Task " + taskId + " has no plan yet"));
+	}
+
+	/** Saves the person's edits as a new plan version. The agent validates it with the same rules as its own plans. */
+	public TaskView editPlan(Long projectId, Long taskId, PlanEditRequest request) {
+		AgentTask task = find(projectId, taskId);
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("steps", request.steps());
+		if (request.summary() != null) {
+			body.put("summary", request.summary());
+		}
+		agent.runPut(taskId, "plan", body).orElseThrow(() -> new NotFoundException("The agent has no record of task " + taskId));
+		return syncAfterAction(task);
+	}
+
+	public TaskView approve(Long projectId, Long taskId, ApproveRequest request) {
+		AgentTask task = find(projectId, taskId);
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("version", request.version());
+		body.put("acknowledged", request.acknowledged() == null ? List.of() : request.acknowledged());
+		body.put("note", request.note() == null ? "" : request.note());
+		agent.runPost(taskId, "approve", body).orElseThrow(() -> new NotFoundException("The agent has no record of task " + taskId));
+		return syncAfterAction(task);
+	}
+
+	public TaskView reject(Long projectId, Long taskId, RejectRequest request) {
+		AgentTask task = find(projectId, taskId);
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("reason", request.reason());
+		agent.runPost(taskId, "reject", body).orElseThrow(() -> new NotFoundException("The agent has no record of task " + taskId));
+		return syncAfterAction(task);
+	}
+
+	public String planMarkdown(Long projectId, Long taskId) {
+		AgentTask task = find(projectId, taskId);
+		if (task.getPlanMarkdown() == null) {
+			task = refresh(task).task();
+		}
+		if (task.getPlanMarkdown() == null) {
+			throw new ConflictException("The plan is not ready yet (status: " + task.getStatus() + ")");
+		}
+		return task.getPlanMarkdown();
+	}
+
+	/** After an action that changed the run, read it back so the saved row and the response are current. */
+	private TaskView syncAfterAction(AgentTask task) {
+		Map<String, Object> run = agent
+			.getRun(task.getId())
+			.orElseThrow(() -> new NotFoundException("The agent has no record of task " + task.getId()));
 		apply(task, run);
 		return view(repository.save(task), run);
 	}
@@ -177,6 +236,27 @@ public class AgentTaskService {
 		}
 		if (task.getPackMarkdown() == null && pack != null) {
 			task.setPackMarkdown(agent.packMarkdown(task.getId()));
+		}
+		applyPlan(task, run);
+	}
+
+	/** Plan fields (Days 9 and 10): version, who wrote it, its markdown, and the person's decision. */
+	private void applyPlan(AgentTask task, Map<String, Object> run) {
+		Map<String, Object> plan = asMap(run.get("plan"));
+		if (plan != null) {
+			Integer version = asInt(plan.get("version"));
+			if (version != null && !version.equals(task.getPlanVersion())) {
+				task.setPlanVersion(version);
+				task.setPlanGeneratedBy(Text.truncate(text(plan.get("generated_by")), 100));
+				task.setPlanMarkdown(agent.runText(task.getId(), "plan.md"));
+			}
+		}
+		if (run.get("approvals") instanceof List<?> approvals && !approvals.isEmpty()) {
+			Map<String, Object> last = asMap(approvals.get(approvals.size() - 1));
+			if (last != null && task.getDecidedAt() == null) {
+				task.setDecidedAt(Instant.now());
+				task.setDecisionNote(Text.truncate(text(last.get("note")), 1000));
+			}
 		}
 	}
 

@@ -24,10 +24,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /** One coding task given to the agent. Its id is also the run id inside the Python service. */
 @Entity
-@Table(
-	name = "agent_task",
-	indexes = @Index(name = "idx_agent_task_project_created", columnList = "project_id,created_at")
-)
+@Table(name = "agent_task", indexes = @Index(name = "idx_agent_task_project_created", columnList = "project_id,created_at"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -72,6 +69,22 @@ public class AgentTask {
 	// ---- the context pack the agent built (Day 5) ----
 	@Column(name = "base_commit", length = 64)
 	private String baseCommit;
+
+	// ---- the plan and the decision about it (Days 9 and 10) ----
+	@Column(name = "plan_markdown", columnDefinition = "text")
+	private String planMarkdown;
+
+	@Column(name = "plan_version")
+	private Integer planVersion;
+
+	@Column(name = "plan_generated_by", length = 100)
+	private String planGeneratedBy;
+
+	@Column(name = "decided_at")
+	private Instant decidedAt;
+
+	@Column(name = "decision_note", length = 1000)
+	private String decisionNote;
 
 	@Column(name = "pack_markdown", columnDefinition = "text")
 	private String packMarkdown;

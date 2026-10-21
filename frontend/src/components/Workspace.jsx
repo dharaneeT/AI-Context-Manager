@@ -3,10 +3,12 @@ import Overview from "./Overview";
 import PackBuilder from "./PackBuilder";
 import SearchPanel from "./SearchPanel";
 import TaskHistory from "./TaskHistory";
+import AgentPanel from "./AgentPanel";
 import CopyButton from "./CopyButton";
 
 const TABS = [
   ["pack", "Ask"],
+  ["agent", "Agent"],
   ["overview", "Index"],
   ["search", "Search"],
   ["history", "History"],
@@ -65,6 +67,7 @@ export default function Workspace({ project }) {
           onCreated={setTaskId}
         />
       )}
+      {tab === "agent" && <AgentPanel projectId={project.id} />}
       {tab === "overview" && <Overview projectId={project.id} />}
       {tab === "search" && <SearchPanel projectId={project.id} />}
       {tab === "history" && (
