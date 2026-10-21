@@ -36,7 +36,8 @@ def make_project() -> Path:
 
 
 def make_settings(**overrides) -> Settings:
-    base = dict(shared_secret="s3cret", data_dir=Path(tempfile.mkdtemp(prefix="cl_data_")), pack_default_tokens=6000)
+    base = dict(shared_secret="s3cret", data_dir=Path(tempfile.mkdtemp(prefix="cl_data_")), pack_default_tokens=6000,
+                llm_provider="mock")  # tests never touch a real model unless they ask for it
     base.update(overrides)
     return Settings(**base)
 
@@ -67,6 +68,15 @@ class FakeBackend:
                 "files": [{"path": "backend/src/main/java/com/demo/review/ReviewService.java", "score": 0.1}]}
 
     def dependencies(self, project_id, path):
+        return []
+
+    def symbols(self, project_id, path):
+        if path.endswith("ReviewService.java"):
+            return [{"kind": "CLASS", "qualifiedName": "com.demo.review.ReviewService", "annotations": "@Service",
+                     "path": path, "startLine": 3, "endLine": 7}]
+        if path.endswith("ReviewController.java"):
+            return [{"kind": "CLASS", "qualifiedName": "com.demo.review.ReviewController",
+                     "annotations": "@RestController", "path": path, "startLine": 5, "endLine": 7}]
         return []
 
     def dependents(self, project_id, path):

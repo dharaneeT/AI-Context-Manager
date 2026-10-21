@@ -19,6 +19,17 @@ class Candidate:
         self.sources.add(source)
 
 
+    def public(self) -> dict:
+        """Small JSON form saved in the run record, so later stages can be resumed without searching again."""
+        return {"path": self.path, "score": round(self.score, 4), "reasons": self.reasons[:6],
+                "sources": sorted(self.sources), "ranges": [list(r) for r in self.ranges[:8]]}
+
+    @classmethod
+    def from_public(cls, data: dict) -> "Candidate":
+        return cls(data["path"], data.get("score", 0.0), list(data.get("reasons", [])), set(data.get("sources", [])),
+                   [tuple(r) for r in data.get("ranges", [])])
+
+
 def get_candidate(cands: dict, path: str) -> Candidate:
     return cands.setdefault(path, Candidate(path))
 

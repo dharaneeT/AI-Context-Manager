@@ -3,6 +3,7 @@ package com.contextlayer.backend.agent;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
@@ -17,7 +18,13 @@ public final class AgentDto {
 		@Min(500) @Max(200000) Integer maxTokens
 	) {}
 
-	/** steps and items come straight from the Python run record when it is reachable (null otherwise). */
+	/** {"q1": "my answer"}. An empty map means "skip the questions, use your assumptions". */
+	public record AnswerRequest(@NotNull Map<String, String> answers) {}
+
+	/**
+	 * steps and items come from the live Python run when it is reachable (null otherwise).
+	 * details is the rest of that run (understanding, profile, impact, plan ...): what the UI reads.
+	 */
 	public record TaskView(
 		Long id,
 		String status,
@@ -34,9 +41,15 @@ public final class AgentDto {
 		Integer pathOnlyFiles,
 		boolean packReady,
 		List<Map<String, Object>> steps,
-		List<Map<String, Object>> items
+		List<Map<String, Object>> items,
+		Map<String, Object> details
 	) {
-		static TaskView of(AgentTask t, List<Map<String, Object>> steps, List<Map<String, Object>> items) {
+		static TaskView of(
+			AgentTask t,
+			List<Map<String, Object>> steps,
+			List<Map<String, Object>> items,
+			Map<String, Object> details
+		) {
 			return new TaskView(
 				t.getId(),
 				t.getStatus().name(),
@@ -53,7 +66,8 @@ public final class AgentDto {
 				t.getPathOnlyFiles(),
 				t.getPackMarkdown() != null,
 				steps,
-				items
+				items,
+				details
 			);
 		}
 	}

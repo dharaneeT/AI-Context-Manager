@@ -1,5 +1,6 @@
 package com.contextlayer.backend.agent;
 
+import com.contextlayer.backend.common.ConflictException;
 import com.contextlayer.backend.common.Text;
 import com.contextlayer.backend.config.AgentProperties;
 import java.net.http.HttpClient;
@@ -8,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -23,6 +26,7 @@ import org.springframework.web.client.RestClientResponseException;
 public class AgentServiceClient {
 
 	private static final ParameterizedTypeReference<Map<String, Object>> MAP = new ParameterizedTypeReference<>() {};
+	private static final Pattern MESSAGE = Pattern.compile("\"message\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
 
 	private final AgentProperties props;
 	private final RestClient client;
@@ -75,44 +79,87 @@ public class AgentServiceClient {
 
 	/** Empty when the agent has no record of this run (for example its data folder was wiped). */
 	public Optional<Map<String, Object>> getRun(Long taskId) {
-		try {
-			return Optional.ofNullable(
-				call("reading the run", () -> client.get().uri("/v1/runs/{id}", taskId).retrieve().body(MAP))
-			);
-		} catch (NotFoundInAgent e) {
-			return Optional.empty();
-		}
+		return runGet(taskId, "");
 	}
 
 	public Optional<Map<String, Object>> cancel(Long taskId) {
+		return runPost(taskId, "cancel", null);
+	}
+
+	// ------------------------------------------------------------------ generic run actions
+	// The agent adds new actions on most days (answers, plan, approve, reject ...). These four methods reach all of
+	// them, so this class does not change every day.
+
+	/** GET /v1/runs/{id}{suffix}, for example "" or "/plan". */
+	public Optional<Map<String, Object>> runGet(Long taskId, String suffix) {
 		try {
 			return Optional.ofNullable(
-				call("cancelling the run", () -> client.post().uri("/v1/runs/{id}/cancel", taskId).retrieve().body(MAP))
+				call("reading the run", () -> client.get().uri("/v1/runs/{id}" + suffix, taskId).retrieve().body(MAP))
 			);
 		} catch (NotFoundInAgent e) {
 			return Optional.empty();
 		}
 	}
 
-	/** Null when the agent has no pack for this run yet. */
-	public String packMarkdown(Long taskId) {
+	/** POST /v1/runs/{id}/{action} with an optional JSON body. */
+	public Optional<Map<String, Object>> runPost(Long taskId, String action, Object body) {
+		return send("POST", taskId, action, body);
+	}
+
+	/** PUT /v1/runs/{id}/{action} with a JSON body. */
+	public Optional<Map<String, Object>> runPut(Long taskId, String action, Object body) {
+		return send("PUT", taskId, action, body);
+	}
+
+	/** Plain text (markdown) such as pack.md or plan.md. Null when it does not exist yet. */
+	public String runText(Long taskId, String name) {
 		try {
 			return call(
-				"reading the pack",
-				() -> client.get().uri("/v1/runs/{id}/pack.md", taskId).retrieve().body(String.class)
+				"reading " + name,
+				() -> client.get().uri("/v1/runs/{id}/{name}", taskId, name).retrieve().body(String.class)
 			);
 		} catch (NotFoundInAgent e) {
 			return null;
 		}
 	}
 
+	public String packMarkdown(Long taskId) {
+		return runText(taskId, "pack.md");
+	}
+
 	// ------------------------------------------------------------------ plumbing
+
+	private Optional<Map<String, Object>> send(String method, Long taskId, String action, Object body) {
+		try {
+			return Optional.ofNullable(
+				call(
+					"calling " + action,
+					() -> {
+						RestClient.RequestBodySpec spec =
+							(
+								"PUT".equals(method)
+									? client.put().uri("/v1/runs/{id}/{action}", taskId, action)
+									: client.post().uri("/v1/runs/{id}/{action}", taskId, action)
+							).contentType(MediaType.APPLICATION_JSON);
+						return (body == null ? spec : spec.body(body)).retrieve().body(MAP);
+					}
+				)
+			);
+		} catch (NotFoundInAgent e) {
+			return Optional.empty();
+		}
+	}
 
 	private static final class NotFoundInAgent extends RuntimeException {
 
 		NotFoundInAgent() {
 			super("not found", null, false, false);
 		}
+	}
+
+	private static String messageOf(String body) {
+		Matcher m = MESSAGE.matcher(body == null ? "" : body);
+		return m.find() ? m.group(1).replace("\\\"", "\"").replace("\\n", " ") : Text.truncate(body, 300);
 	}
 
 	private <T> T call(String what, Supplier<T> action) {
@@ -130,6 +177,9 @@ public class AgentServiceClient {
 			if (status == 404) {
 				throw new NotFoundInAgent();
 			}
+			if (status == 409) { // a rule of the agent said no (wrong state, stale plan version ...): show its reason
+				throw new ConflictException(messageOf(e.getResponseBodyAsString()));
+			}
 			if (status == 401) {
 				throw new AgentServiceException(
 					"The agent rejected the shared secret. AGENT_SHARED_SECRET in backend/.env must equal the one in agent/.env.",
@@ -138,7 +188,7 @@ public class AgentServiceClient {
 			}
 			log.warn("Agent service error while {}: {} {}", what, status, e.getResponseBodyAsString());
 			throw new AgentServiceException(
-				"Agent service error while " + what + ": " + Text.truncate(e.getResponseBodyAsString(), 300),
+				"Agent service error while " + what + ": " + messageOf(e.getResponseBodyAsString()),
 				false
 			);
 		}

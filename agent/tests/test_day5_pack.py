@@ -90,7 +90,7 @@ class OrchestratorTests(unittest.TestCase):
         self.services = Services(self.settings, backend=FakeBackend(self.root), store=self.store)
         self.orc = Orchestrator(self.services)
 
-    def wait(self, run_id, done=("CONTEXT_READY", "FAILED", "CANCELLED")):
+    def wait(self, run_id, done=("CONTEXT_READY", "AWAITING_APPROVAL", "NEEDS_INPUT", "FAILED", "CANCELLED")):
         for _ in range(100):
             run = self.store.get(run_id)
             if run["status"] in done:
@@ -101,8 +101,9 @@ class OrchestratorTests(unittest.TestCase):
     def test_full_run_records_steps_and_pack(self):
         self.orc.submit(7, 1, "Add star rating to reviews", None)
         run = self.wait(7)
-        self.assertEqual(run["status"], "CONTEXT_READY")
-        self.assertEqual([s["stage"] for s in run["steps"]], ["Understand", "Discover", "Pack"])
+        self.assertIn(run["status"], ("CONTEXT_READY", "AWAITING_APPROVAL"))  # later days add a plan stage
+        done = [s["stage"] for s in run["steps"] if s["status"] == "DONE"]
+        self.assertEqual([d for d in done if d in ("Understand", "Discover", "Pack")], ["Understand", "Discover", "Pack"])
         self.assertTrue(all(s["status"] == "DONE" for s in run["steps"]))
         self.assertIn("ReviewService.java", self.store.pack_markdown(7))
         self.assertGreater(run["pack"]["stats"]["fullFiles"], 0)

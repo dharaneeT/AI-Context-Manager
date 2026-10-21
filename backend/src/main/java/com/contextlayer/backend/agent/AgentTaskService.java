@@ -8,6 +8,7 @@ import com.contextlayer.backend.common.Text;
 import com.contextlayer.backend.project.Project;
 import com.contextlayer.backend.project.ProjectRepository;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,8 +18,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 /**
- * Spring Boot owns the task record; the Python service owns the work. There is no scheduler: whenever a task is
- * read, an active one asks the agent for its latest state and saves it. Not @Transactional on purpose, because
+ * Spring Boot owns the task record; the Python service owns the work. There is no scheduler: whenever a task that is
+ * not finished is read, it asks the agent for its latest state and saves it. Not @Transactional on purpose, because
  * every read can make an HTTP call and short saves are better than one long transaction.
  */
 @Slf4j
@@ -48,7 +49,7 @@ public class AgentTaskService {
 			repository.deleteById(task.getId()); // never leave a task that nobody is working on
 			throw e;
 		}
-		return TaskView.of(task, null, null);
+		return view(task, null);
 	}
 
 	public List<TaskView> list(Long projectId, int limit) {
@@ -56,23 +57,37 @@ public class AgentTaskService {
 		return repository
 			.findByProjectIdOrderByCreatedAtDesc(projectId, PageRequest.of(0, size))
 			.stream()
-			.map(t -> t.getStatus().isActive() ? refresh(t).task() : t)
-			.map(t -> TaskView.of(t, null, null))
+			.map(t -> t.getStatus().isTerminal() ? t : refresh(t).task())
+			.map(t -> view(t, null))
 			.toList();
 	}
 
 	public TaskView get(Long projectId, Long taskId) {
 		AgentTask task = find(projectId, taskId);
-		Refreshed refreshed = task.getStatus().isActive()
-			? refresh(task)
-			: new Refreshed(task, fetchRunQuietly(taskId));
-		Map<String, Object> run = refreshed.run();
-		return TaskView.of(refreshed.task(), steps(run), items(run));
+		Refreshed refreshed = task.getStatus().isTerminal()
+			? new Refreshed(task, fetchRunQuietly(taskId))
+			: refresh(task);
+		return view(refreshed.task(), refreshed.run());
+	}
+
+	/** The user answers (or skips) the agent's questions; the run continues. */
+	public TaskView answer(Long projectId, Long taskId, Map<String, String> answers) {
+		AgentTask task = find(projectId, taskId);
+		if (task.getStatus() != AgentTaskStatus.NEEDS_INPUT) {
+			throw new ConflictException("Task " + taskId + " is " + task.getStatus() + ", not waiting for answers");
+		}
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("answers", answers);
+		Map<String, Object> run = agent
+			.runPost(taskId, "answers", body)
+			.orElseThrow(() -> new NotFoundException("The agent has no record of task " + taskId));
+		apply(task, run);
+		return view(repository.save(task), run);
 	}
 
 	public TaskView cancel(Long projectId, Long taskId) {
 		AgentTask task = find(projectId, taskId);
-		if (!task.getStatus().isActive()) {
+		if (task.getStatus().isTerminal()) {
 			throw new ConflictException("Task " + taskId + " is already " + task.getStatus());
 		}
 		Optional<Map<String, Object>> run = agent.cancel(taskId);
@@ -83,13 +98,12 @@ public class AgentTaskService {
 			task.setStage("Cancelled");
 			task.setFinishedAt(Instant.now());
 		}
-		task = repository.save(task);
-		return TaskView.of(task, steps(run.orElse(null)), items(run.orElse(null)));
+		return view(repository.save(task), run.orElse(null));
 	}
 
 	public String packMarkdown(Long projectId, Long taskId) {
 		AgentTask task = find(projectId, taskId);
-		if (task.getStatus().isActive()) {
+		if (!task.getStatus().isTerminal()) {
 			task = refresh(task).task();
 		}
 		if (task.getPackMarkdown() == null) {
@@ -132,7 +146,8 @@ public class AgentTaskService {
 		}
 	}
 
-	private void apply(AgentTask task, Map<String, Object> run) {
+	/** Copies the agent's view of the run onto the task row. Day 10 extends this with the plan fields. */
+	void apply(AgentTask task, Map<String, Object> run) {
 		String status = text(run.get("status"));
 		if (status != null) {
 			try {
@@ -143,7 +158,7 @@ public class AgentTaskService {
 		}
 		task.setStage(Text.truncate(text(run.get("stage")), 100));
 		task.setErrorMessage(Text.truncate(text(run.get("error")), 1000));
-		if (!task.getStatus().isActive() && task.getFinishedAt() == null) {
+		if (task.getStatus().isTerminal() && task.getFinishedAt() == null) {
 			task.setFinishedAt(Instant.now());
 		}
 		Map<String, Object> pack = asMap(run.get("pack"));
@@ -160,15 +175,25 @@ public class AgentTaskService {
 				task.setBaseCommit(Text.truncate(text(repo.get("base_commit")), 64));
 			}
 		}
-		if (task.getStatus() == AgentTaskStatus.CONTEXT_READY && task.getPackMarkdown() == null) {
+		if (task.getPackMarkdown() == null && pack != null) {
 			task.setPackMarkdown(agent.packMarkdown(task.getId()));
 		}
 	}
 
-	private AgentTask find(Long projectId, Long taskId) {
+	AgentTask find(Long projectId, Long taskId) {
 		return repository
 			.findByIdAndProjectId(taskId, projectId)
 			.orElseThrow(() -> new NotFoundException("Agent task " + taskId + " not found in project " + projectId));
+	}
+
+	TaskView view(AgentTask task, Map<String, Object> run) {
+		Map<String, Object> details = null;
+		if (run != null) {
+			details = new LinkedHashMap<>(run);
+			details.remove("pack");
+			details.remove("steps");
+		}
+		return TaskView.of(task, steps(run), items(run), details);
 	}
 
 	// ------------------------------------------------------------------ tiny JSON helpers
@@ -182,7 +207,7 @@ public class AgentTaskService {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Map<String, Object> asMap(Object o) {
+	static Map<String, Object> asMap(Object o) {
 		return o instanceof Map<?, ?> m ? (Map<String, Object>) m : null;
 	}
 

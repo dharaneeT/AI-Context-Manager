@@ -1,5 +1,6 @@
 package com.contextlayer.backend.agent;
 
+import com.contextlayer.backend.agent.AgentDto.AnswerRequest;
 import com.contextlayer.backend.agent.AgentDto.CreateRequest;
 import com.contextlayer.backend.agent.AgentDto.TaskView;
 import jakarta.validation.Valid;
@@ -32,7 +33,7 @@ public class AgentTaskController {
 		Map<String, Object> out = new LinkedHashMap<>();
 		try {
 			out.put("reachable", true);
-			out.put("details", agent.health());
+			out.put("details", agent.deepHealth());
 		} catch (AgentServiceException e) {
 			out.put("reachable", false);
 			out.put("message", e.getMessage());
@@ -54,6 +55,16 @@ public class AgentTaskController {
 	@GetMapping("/projects/{projectId}/agent/tasks/{taskId}")
 	public TaskView get(@PathVariable Long projectId, @PathVariable Long taskId) {
 		return service.get(projectId, taskId);
+	}
+
+	@PostMapping("/projects/{projectId}/agent/tasks/{taskId}/answers")
+	@ResponseStatus(HttpStatus.ACCEPTED)
+	public TaskView answer(
+		@PathVariable Long projectId,
+		@PathVariable Long taskId,
+		@Valid @RequestBody AnswerRequest request
+	) {
+		return service.answer(projectId, taskId, request.answers());
 	}
 
 	@PostMapping("/projects/{projectId}/agent/tasks/{taskId}/cancel")

@@ -20,6 +20,11 @@ def _load_dotenv(path: Path) -> None:
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
+def _bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    return default if raw is None else raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 def _int(name: str, default: int) -> int:
     try:
         return int(os.environ.get(name, default))
@@ -47,6 +52,13 @@ class Settings:
     data_dir: Path = field(default_factory=lambda: AGENT_DIR / ".agent_data")
     pack_default_tokens: int = 6000
     max_file_bytes: int = 300_000
+    use_llm: bool = True          # False = heuristics and templates only (fast, no model needed)
+    max_questions: int = 3        # the agent asks at most this many clarifying questions
+
+    @property
+    def prompt_budget_tokens(self) -> int:
+        """How many tokens a prompt may use: the model's window minus the answer space minus a safety margin."""
+        return max(500, self.llm_num_ctx - self.llm_max_output_tokens - 300)
 
 
 def _parse_path_map(raw: str) -> tuple:
@@ -83,4 +95,6 @@ def load_settings() -> Settings:
         data_dir=data_dir,
         pack_default_tokens=_int("PACK_DEFAULT_TOKENS", 6000),
         max_file_bytes=_int("MAX_FILE_BYTES", 300_000),
+        use_llm=_bool("AGENT_USE_LLM", True),
+        max_questions=_int("AGENT_MAX_QUESTIONS", 3),
     )
