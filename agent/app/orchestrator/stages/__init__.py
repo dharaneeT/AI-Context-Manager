@@ -7,12 +7,20 @@ A stage module defines:
     def run(ctx) -> str           does the work, saves results with ctx.save(...), returns a one-line summary
 
 A stage may raise StageStop to park the run until a person acts (answers, approval).
+Stages with ORDER 100 and above are the IMPLEMENTATION phase: they only run after a person approved the plan.
+A stage can set how the run ends with ctx.save(terminal_status="...", terminal_label="...").
 """
 from __future__ import annotations
 
 import importlib
 import pkgutil
 from dataclasses import dataclass
+
+from app.core.errors import AgentError
+
+
+class Cancelled(Exception):
+    """The user cancelled the run."""
 
 
 class StageStop(Exception):
@@ -39,6 +47,21 @@ class StageContext:
 
     def save(self, **fields) -> None:
         self.services.store.update(self.run_id, **fields)
+
+    def check_cancel(self) -> None:
+        """Long stages call this between steps so Cancel takes effect quickly."""
+        if self.run["cancel_requested"]:
+            raise Cancelled()
+
+    def require_approved(self) -> dict:
+        """The approval gate for the implementation phase: the CURRENT plan version must be approved."""
+        run = self.run
+        approvals = run.get("approvals") or []
+        plan = run.get("plan") or {}
+        last = approvals[-1] if approvals else {}
+        if last.get("decision") != "APPROVED" or last.get("version") != plan.get("version"):
+            raise AgentError("The plan has not been approved: nothing may be changed without approval", 409)
+        return run
 
 
 def load_stages() -> list:

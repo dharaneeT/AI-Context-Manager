@@ -54,6 +54,14 @@ class Settings:
     max_file_bytes: int = 300_000
     use_llm: bool = True          # False = heuristics and templates only (fast, no model needed)
     max_questions: int = 3        # the agent asks at most this many clarifying questions
+    # ---- Days 11 to 15: workspace, commands, implementation, repair ----
+    command_timeout_seconds: int = 900   # one build or test command may run this long
+    max_output_chars: int = 60_000       # command output kept per run (head and tail)
+    implement_attempts: int = 2          # tries per plan step (the second one is told what was wrong)
+    max_repair_attempts: int = 3         # bounded repair loop
+    repair_seconds: int = 1800           # and a wall-clock limit for the whole repair loop
+    maven_opts: str = "-Xmx768m"         # keeps Maven inside an 8 GB PC
+    node_opts: str = "--max-old-space-size=1024"
 
     @property
     def prompt_budget_tokens(self) -> int:
@@ -97,4 +105,11 @@ def load_settings() -> Settings:
         max_file_bytes=_int("MAX_FILE_BYTES", 300_000),
         use_llm=_bool("AGENT_USE_LLM", True),
         max_questions=_int("AGENT_MAX_QUESTIONS", 3),
+        command_timeout_seconds=_int("AGENT_COMMAND_TIMEOUT", 900),
+        max_output_chars=_int("AGENT_MAX_OUTPUT", 60_000),
+        implement_attempts=_int("AGENT_IMPLEMENT_ATTEMPTS", 2),
+        max_repair_attempts=_int("AGENT_MAX_REPAIRS", 3),
+        repair_seconds=_int("AGENT_REPAIR_SECONDS", 1800),
+        maven_opts=os.environ.get("AGENT_MAVEN_OPTS", "-Xmx768m"),
+        node_opts=os.environ.get("AGENT_NODE_OPTS", "--max-old-space-size=1024"),
     )

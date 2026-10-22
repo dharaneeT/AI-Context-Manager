@@ -9,8 +9,9 @@ from pathlib import Path
 from app.core.errors import AgentError, NotFound
 
 ACTIVE = {"QUEUED", "RUNNING"}                      # a worker is (or will be) busy with it
-WAITING = {"NEEDS_INPUT", "AWAITING_APPROVAL"}      # parked until a person acts; survives a restart
-HEAVY_KEYS = {"pack", "steps", "candidates", "profile", "impact", "plan", "plans", "approvals", "understanding"}
+WAITING = {"NEEDS_INPUT", "AWAITING_APPROVAL", "APPROVED"}  # parked until a person acts; survives a restart
+HEAVY_KEYS = {"pack", "steps", "candidates", "profile", "impact", "plan", "plans", "approvals", "understanding",
+              "workspace", "implementation", "changes", "verification", "repair"}
 
 
 def now() -> str:
@@ -46,6 +47,7 @@ class RunStore:
                    "status": "QUEUED", "stage": "Queued", "error": None, "created_at": now(), "started_at": None,
                    "finished_at": None, "steps": [], "understanding": None, "answers": None, "profile": None,
                    "candidates": None, "impact": None, "pack": None, "plan": None, "plans": [], "approvals": [],
+                   "workspace": None, "implementation": None, "changes": [], "verification": None, "repair": None,
                    "cancel_requested": False}
             self._runs[run_id] = run
             self._write(run)

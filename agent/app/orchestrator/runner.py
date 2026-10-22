@@ -8,15 +8,11 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from app.core.errors import AgentError
-from app.orchestrator.stages import StageContext, StageStop, load_stages
+from app.orchestrator.stages import Cancelled, StageContext, StageStop, load_stages
 from app.orchestrator.store import ACTIVE, WAITING, now
 
 log = logging.getLogger("agent.runner")
 MAX_ACTIVE_RUNS = 20
-
-
-class Cancelled(Exception):
-    pass
 
 
 class Orchestrator:
@@ -36,6 +32,15 @@ class Orchestrator:
         run = self.store.create(run_id, project_id, command, max_tokens)
         self.pool.submit(self._execute, run_id)
         return run
+
+    def start_implementation(self, run_id: int) -> dict:
+        """Continue an APPROVED run into the implementation phase (stages 100 and up). A PARTIAL run may be retried."""
+        run = self.store.get(run_id)
+        approvals = run.get("approvals") or []
+        last = approvals[-1] if approvals else {}
+        if run["status"] not in ("APPROVED", "PARTIAL") or last.get("decision") != "APPROVED" or last.get("version") != (run["plan"] or {}).get("version"):
+            raise AgentError(f"Run {run_id} is {run['status']}: only a run whose current plan is approved can be implemented", 409)
+        return self.resume(run_id)
 
     def resume(self, run_id: int) -> dict:
         """Queue a parked run again; finished stages are skipped."""
@@ -91,7 +96,9 @@ class Orchestrator:
                     self.store.end_step(run_id, "FAILED", str(e)[:300])
                     raise
                 self.store.end_step(run_id, "DONE", summary)
-            self.store.update(run_id, status="CONTEXT_READY", stage="Context ready", finished_at=now())
+            end = self.store.get(run_id)  # stages can choose how the run ends
+            self.store.update(run_id, status=end.get("terminal_status") or "CONTEXT_READY",
+                              stage=end.get("terminal_label") or "Context ready", finished_at=now())
         except Cancelled:
             self.store.update(run_id, status="CANCELLED", stage="Cancelled", finished_at=now())
         except AgentError as e:
