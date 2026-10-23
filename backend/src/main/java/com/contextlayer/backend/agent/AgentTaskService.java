@@ -144,6 +144,30 @@ public class AgentTaskService {
 		return view(repository.save(task), run);
 	}
 
+	/** Start (or retry) the implementation of an approved plan. The agent works in a private copy of the project. */
+	public TaskView implement(Long projectId, Long taskId) {
+		AgentTask task = find(projectId, taskId);
+		if (task.getStatus() != AgentTaskStatus.APPROVED && task.getStatus() != AgentTaskStatus.PARTIAL) {
+			throw new ConflictException(
+				"Task " + taskId + " is " + task.getStatus() + ": only an approved (or partly done) task can be implemented"
+			);
+		}
+		agent
+			.runPost(taskId, "implement", null)
+			.orElseThrow(() -> new NotFoundException("The agent has no record of task " + taskId));
+		return syncAfterAction(task);
+	}
+
+	/** Everything the agent changed, as a unified diff against the project as it was when the workspace was made. */
+	public String diff(Long projectId, Long taskId) {
+		find(projectId, taskId);
+		String diff = agent.runText(taskId, "diff");
+		if (diff == null) {
+			throw new ConflictException("Task " + taskId + " has no workspace yet");
+		}
+		return diff;
+	}
+
 	public TaskView cancel(Long projectId, Long taskId) {
 		AgentTask task = find(projectId, taskId);
 		if (task.getStatus().isTerminal()) {

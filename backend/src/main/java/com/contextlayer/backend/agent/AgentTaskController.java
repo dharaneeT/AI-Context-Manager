@@ -108,6 +108,17 @@ public class AgentTaskController {
 		return service.reject(projectId, taskId, request);
 	}
 
+	@PostMapping("/projects/{projectId}/agent/tasks/{taskId}/implement")
+	@ResponseStatus(HttpStatus.ACCEPTED)
+	public TaskView implement(@PathVariable Long projectId, @PathVariable Long taskId) {
+		return service.implement(projectId, taskId);
+	}
+
+	@GetMapping(value = "/projects/{projectId}/agent/tasks/{taskId}/diff", produces = "text/plain;charset=UTF-8")
+	public String diff(@PathVariable Long projectId, @PathVariable Long taskId) {
+		return service.diff(projectId, taskId);
+	}
+
 	@PostMapping("/projects/{projectId}/agent/tasks/{taskId}/cancel")
 	public TaskView cancel(@PathVariable Long projectId, @PathVariable Long taskId) {
 		return service.cancel(projectId, taskId);

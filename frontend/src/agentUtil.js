@@ -1,17 +1,36 @@
 /** Pill colour for an agent task status. */
 export function statusClass(status) {
-  if (status === "APPROVED" || status === "CONTEXT_READY") return "ok";
-  if (status === "FAILED" || status === "REJECTED") return "bad";
-  if (status === "NEEDS_INPUT" || status === "AWAITING_APPROVAL") return "warn";
+  if (
+    [
+      "APPROVED",
+      "CONTEXT_READY",
+      "IMPLEMENTED",
+      "VERIFIED",
+      "COMPLETE",
+    ].includes(status)
+  )
+    return "ok";
+  if (["FAILED", "REJECTED", "VERIFY_FAILED"].includes(status)) return "bad";
+  if (["NEEDS_INPUT", "AWAITING_APPROVAL", "PARTIAL"].includes(status))
+    return "warn";
   return "";
 }
 
 export const isActive = (status) => status === "QUEUED" || status === "RUNNING";
 
 export const isFinished = (status) =>
-  ["CONTEXT_READY", "APPROVED", "REJECTED", "FAILED", "CANCELLED"].includes(
-    status,
-  );
+  [
+    "CONTEXT_READY",
+    "APPROVED",
+    "REJECTED",
+    "IMPLEMENTED",
+    "VERIFIED",
+    "VERIFY_FAILED",
+    "COMPLETE",
+    "PARTIAL",
+    "FAILED",
+    "CANCELLED",
+  ].includes(status);
 
 /** The backend sends errors as JSON text. Show just the message. */
 export function friendly(error) {
