@@ -40,6 +40,8 @@ def signature(kind: str, file: str | None, message: str, test: str | None = None
 def relativize(path: str, tree: Path) -> str:
     """Make a path from tool output relative to the workspace, with forward slashes."""
     p = path.strip().strip('"').replace("\\", "/")
+    if re.match(r"^/[A-Za-z]:/", p):  # Maven on Windows prints /C:/Users/...: drop the leading slash
+        p = p[1:]
     root = str(tree.resolve()).replace("\\", "/").rstrip("/") + "/"
     if p.lower().startswith(root.lower()):
         return p[len(root):]

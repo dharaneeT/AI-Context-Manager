@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import difflib
+import re
 import os
 from pathlib import Path
 
@@ -45,6 +46,7 @@ def _closest(lines: list, search_lines: list) -> str:
     hits = difflib.get_close_matches(probe, [l.strip() for l in lines if l.strip()], n=1, cutoff=0.5)
     return f" The closest line in the file is: {hits[0][:100]!r}" if hits else ""
 
+_MARKER = re.compile(r"^(<{7}|={7}|>{7})(\s|$)", re.M)  # merge-conflict style lines
 
 def find_and_replace(text: str, search: str, replace: str) -> str:
     """Replace `search` with `replace` in `text` (both LF-normalised). Exact match first, then a match that ignores
@@ -136,6 +138,11 @@ def apply_edits(tree: Path, edits: list, allowed: set | None, max_file_bytes: in
         for path, state in working.items():
             if len(state["text"].encode("utf-8")) > max_file_bytes:
                 problems.append(f"{path} would grow beyond {max_file_bytes} bytes")
+                continue
+            before_text = (originals[path] or "").replace("\r\n", "\n")
+            if len(_MARKER.findall(state["text"])) > len(_MARKER.findall(before_text)):
+                problems.append(f"{path}: the edit left merge-conflict marker lines (<<<<<<<, =======, >>>>>>>) in the "
+                                "file; write only the real code between the SEARCH and REPLACE markers")
                 continue
             check = check_syntax(path, state["text"])
             if check["hard"]:

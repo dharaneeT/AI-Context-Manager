@@ -1,0 +1,164 @@
+# IntelliJ / VS Code REST Client requests for Days 1-5.
+# Put your own secret below (the same value you put in agent/.env and backend/.env).
+@agent = http://localhost:8001
+@backend = http://localhost:8080
+@secret = change-me-to-a-long-random-string
+@project = 1
+
+### DAY 1: the agent is alive (no secret needed)
+GET {{agent}}/health
+
+### DAY 1: secret works, config summary
+GET {{agent}}/v1/info
+X-Agent-Secret: {{secret}}
+
+### DAY 1: wrong secret must give 401
+GET {{agent}}/v1/info
+X-Agent-Secret: wrong
+
+### DAY 2: is the agent reachable from Spring Boot?
+GET {{backend}}/api/agent/status
+
+### DAY 2: create an agent task through Spring Boot
+POST {{backend}}/api/projects/{{project}}/agent/tasks
+Content-Type: application/json
+
+{ "command": "Add pagination to the task history list", "maxTokens": 6000 }
+
+### DAY 2: read it (replace 1 with the id you got back)
+GET {{backend}}/api/projects/{{project}}/agent/tasks/1
+
+### DAY 2: list / cancel
+GET {{backend}}/api/projects/{{project}}/agent/tasks
+POST {{backend}}/api/projects/{{project}}/agent/tasks/1/cancel
+
+### DAY 3: is Ollama up and is the model installed?
+GET {{agent}}/v1/llm/status
+X-Agent-Secret: {{secret}}
+
+### DAY 3: model must answer with valid JSON (first call loads the model: slow)
+POST {{agent}}/v1/llm/ping
+X-Agent-Secret: {{secret}}
+
+### DAY 4: what does the agent depend on?
+GET {{agent}}/health/deep
+
+### DAY 4: search adapter - one scored entry per FILE
+POST {{agent}}/v1/context/search?project_id={{project}}&q=how are tasks stored
+X-Agent-Secret: {{secret}}
+
+### DAY 4: read one COMPLETE file
+GET {{agent}}/v1/context/file?project_id={{project}}&path=backend/pom.xml
+X-Agent-Secret: {{secret}}
+
+### DAY 5: the full pipeline, synchronously
+POST {{agent}}/v1/context/discover
+X-Agent-Secret: {{secret}}
+Content-Type: application/json
+
+{ "project_id": 1, "command": "Add pagination to the task history list", "max_tokens": 6000, "include_markdown": true }
+
+### DAY 5: the same through Spring Boot, then download the pack
+GET {{backend}}/api/projects/{{project}}/agent/tasks/1/pack.md
+
+### DAY 6: answer the agent's questions (task must be NEEDS_INPUT; q1 comes from the task's understanding)
+POST {{backend}}/api/projects/{{project}}/agent/tasks/1/answers
+Content-Type: application/json
+
+{ "answers": { "q1": "Ratings cannot be changed later" } }
+
+### DAY 6: or skip them
+POST {{backend}}/api/projects/{{project}}/agent/tasks/1/answers
+Content-Type: application/json
+
+{ "answers": {} }
+
+### DAY 7: how the project is built and written
+GET {{agent}}/v1/projects/{{project}}/profile
+X-Agent-Secret: {{secret}}
+
+### DAY 7: ignore the cache
+GET {{agent}}/v1/projects/{{project}}/profile?refresh=true
+X-Agent-Secret: {{secret}}
+
+### DAY 8: impact analysis is part of the task (see details.impact)
+GET {{backend}}/api/projects/{{project}}/agent/tasks/1
+
+### DAY 9: the plan as JSON + markdown
+GET {{backend}}/api/projects/{{project}}/agent/tasks/1/plan
+
+### DAY 9: the plan as markdown
+GET {{backend}}/api/projects/{{project}}/agent/tasks/1/plan.md
+
+### DAY 10: edit the plan (becomes version 2)
+PUT {{backend}}/api/projects/{{project}}/agent/tasks/1/plan
+Content-Type: application/json
+
+{ "steps": [ { "title": "Update the service", "description": "...", "action": "modify", "files": ["backend/src/main/java/com/contextlayer/backend/task/TaskService.java"] },
+             { "title": "Verify", "description": "", "action": "verify", "files": [], "verify": "backend:compile" } ] }
+
+### DAY 10: approve version 2, acknowledging risky steps (e.g. ["s1"])
+POST {{backend}}/api/projects/{{project}}/agent/tasks/1/approve
+Content-Type: application/json
+
+{ "version": 2, "acknowledged": [], "note": "looks right" }
+
+### DAY 10: reject
+POST {{backend}}/api/projects/{{project}}/agent/tasks/1/reject
+Content-Type: application/json
+
+{ "reason": "Wrong approach: use a new table" }
+
+### DAY 11: continue an APPROVED run (creates the private workspace; later days also implement and verify)
+POST {{agent}}/v1/runs/1/implement
+X-Agent-Secret: {{secret}}
+
+### DAY 11: the workspace and what changed in it
+GET {{agent}}/v1/runs/1/workspace
+X-Agent-Secret: {{secret}}
+
+### DAY 11: run ONE named command from the profile inside the workspace (first Maven run downloads dependencies)
+POST {{agent}}/v1/runs/1/workspace/commands
+X-Agent-Secret: {{secret}}
+Content-Type: application/json
+
+{ "command": "backend:compile" }
+
+### DAY 11/12: everything changed so far, as a diff
+GET {{agent}}/v1/runs/1/diff
+X-Agent-Secret: {{secret}}
+
+### DAY 12: apply edits by hand (only files in the approved plan are allowed)
+POST {{agent}}/v1/runs/1/workspace/edits
+X-Agent-Secret: {{secret}}
+Content-Type: application/json
+
+{ "label": "manual edit", "text": "FILE: backend/src/main/java/com/contextlayer/backend/task/TaskService.java\n<<<<<<< SEARCH\nexact line from the file\n=======\nthe replacement\n>>>>>>> REPLACE" }
+
+### DAY 12: checkpoints and totals
+GET {{agent}}/v1/runs/1/changes
+X-Agent-Secret: {{secret}}
+
+### DAY 12: undo everything (or pass a checkpoint id from /changes)
+POST {{agent}}/v1/runs/1/workspace/rollback
+X-Agent-Secret: {{secret}}
+Content-Type: application/json
+
+{ "to": "baseline" }
+
+### DAY 13: start (or retry) the implementation through Spring Boot, then read the diff
+POST {{backend}}/api/projects/{{project}}/agent/tasks/1/implement
+
+###
+GET {{backend}}/api/projects/{{project}}/agent/tasks/1/diff
+
+### DAY 14: run the plan's verification commands again (manual re-check)
+POST {{agent}}/v1/runs/1/workspace/verify
+X-Agent-Secret: {{secret}}
+Content-Type: application/json
+
+{ }
+
+### DAY 15: the whole story is in the task: details.implementation, details.verification, details.repair
+GET {{backend}}/api/projects/{{project}}/agent/tasks/1
+
